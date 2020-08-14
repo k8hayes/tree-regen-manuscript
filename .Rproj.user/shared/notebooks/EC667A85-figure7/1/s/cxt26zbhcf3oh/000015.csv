@@ -1,0 +1,5 @@
+"0","grid <- plot_grid(org, expose,
+          nrow = 1, ncol = 2,
+          rel_widths = c(1,1.25))
+"
+"2","Removed 2 rows containing non-finite values (stat_boxplot)."

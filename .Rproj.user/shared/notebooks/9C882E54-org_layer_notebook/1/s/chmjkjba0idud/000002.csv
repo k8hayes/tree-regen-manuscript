@@ -1,0 +1,17 @@
+"0","```r
+```r
+org_depth <- read.csv(\data/org_depth.csv\)
+ org_depth_plot <- ggplot(org_depth, 
+                          aes(x = factor(org_depth$TREATMENT), y =
+                                org_depth$ORG_DEPTH, 
+                              fill = org_depth$SITE)) + 
+    geom_boxplot()  + panel_border() + background_grid() + 
+    scale_fill_manual(name = \Site Type\,
+                      values = c(\#d9d9d9\, \#ffffff\), 
+                      labels = c(\Upland\, \Lowland\)) + 
+    labs(title = \Organic Layer Depth\, 
+         x = \Number of Fires\, y = \Organic layer depth (cm)\) + 
+    theme(plot.title = element_text(hjust = 0), legend.position =  \none\) 
+org_depth_plot
+```
+```"

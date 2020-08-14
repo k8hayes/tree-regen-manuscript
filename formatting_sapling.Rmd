@@ -1,0 +1,728 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+## Setting up 
+```{r}
+# install.packages("dplyr")
+# install.packages("tidyr")
+require(tidyr)
+require(dplyr)
+```
+
+# Steese
+The following piece reads in the file of clumped trees for the Steese. It then selects for saplings and trees, merging the two together after excluding anything dead. I also had to do some other more superficial work: willow species are grouped to the single label of "salix", controls are brought in from the 2019 data file and I've made note of the sites that will eventually need to be scaled up. 
+
+I'm also going back to calculate basal area from DBH before summing according to species.
+
+```{r formatting steese - including controls}
+STraw <- read.csv("data/DBH/old dbh/Steese_CLUMPED_DBH.csv")
+  # IDing saplings
+    ST_SAP <- STraw[STraw$DBH_SUM[STraw$CLUMP == "IND"] <2.5,] 
+    live_steese_saplings_clumped <- ST_SAP[ST_SAP$CAN_AV != 0,]
+    live_steese_saplings_clumped$TYPE <- "SAPLING"
+  # IDing Trees
+    ST_TREE <- STraw[STraw$DBH_SUM > 2.5,]
+    live_steese_trees_clumped <- ST_TREE[ST_TREE$CAN_AV !=0,]
+    live_steese_trees_clumped$TYPE <- "TREE"
+  # merging the two
+    live_clump_ST_all <- rbind(live_steese_saplings_clumped, live_steese_trees_clumped)
+    rm(live_steese_saplings_clumped, live_steese_trees_clumped)
+    rm(ST_SAP, ST_TREE, STraw)
+  # condensing SPP id
+    unique(live_clump_ST_all$SPP)
+    live_clump_ST_all$SPP[live_clump_ST_all$SPP == "SAGL"] <- "SALIX"
+    live_clump_ST_all$SPP[live_clump_ST_all$SPP == "SA_7"] <- "SALIX"
+    live_clump_ST_all$SPP[live_clump_ST_all$SPP == "SA_6"] <- "SALIX"
+    live_clump_ST_all$SPP[live_clump_ST_all$SPP == "SA_5"] <- "SALIX"
+    live_clump_ST_all$SPP[live_clump_ST_all$SPP == "SADE"] <- "SALIX"
+  # adding controls
+    ST_control <- read.csv("data/Steese specific/Steese_stem_clump_controls.csv")
+  # adding stem count = 1 for individuals
+    ST_control$STEM_COUNT[is.na(ST_control$STEM_COUNT)] <- 1
+  # IDing saplings
+    STcon_sap <- ST_control[ST_control$DBH_SUM[ST_control$CLUMP == "IND"] <2.5,] 
+    live_steese_saplings_clumped_control <- STcon_sap[STcon_sap$CAN_AV != 0,]
+    live_steese_saplings_clumped_control$TYPE <- "SAPLING"
+  # IDing Trees
+    STcon_tree <- ST_control[ST_control$DBH_SUM > 2.5,]
+    live_steese_trees_clumped_control <- STcon_tree[STcon_tree$CAN_AV !=0,]
+    live_steese_trees_clumped_control$TYPE <- "TREE"
+  # merging the two
+    live_clump_ST_all_control <- rbind(live_steese_saplings_clumped_control,
+                                       live_steese_trees_clumped_control)
+  # Making columns between con
+    colnames(live_clump_ST_all)
+    colnames(live_clump_ST_all_control)
+    # removing sitenum
+      live_clump_ST_all <- live_clump_ST_all[-3]
+    # removing browse_index
+      live_clump_ST_all <- live_clump_ST_all[-7]
+    # removing understory
+      live_clump_ST_all <- live_clump_ST_all[-7]
+    # removing total_stem_sum
+      live_clump_ST_all_control <- live_clump_ST_all_control[-10]
+  # merging control and rest
+    live_clump_ST <- rbind(live_clump_ST_all, live_clump_ST_all_control)
+  # clean up  
+    rm(live_steese_saplings_clumped_control,
+       live_steese_trees_clumped_control, ST_control, STcon_sap, STcon_tree,
+       live_clump_ST_all, live_clump_ST_all_control)
+    live_clump_ST_all <- live_clump_ST ; rm(live_clump_ST)
+# done
+  # checking which sites will need to be scaled up
+  # unique(live_clump_ST_all$SITECODE[live_clump_ST_all$QUADRANT == 1])
+    # 33_1 18_1 4_2 19_2 28_1
+
+# transforming DBH into basal area
+live_clump_ST_all$BASAL <- live_clump_ST_all$DBH_SUM*live_clump_ST_all$DBH_SUM*0.005454
+write.csv(live_clump_ST_all, "all_steese_live_clumped.csv", row.names = FALSE)
+live_clump_ST_all <- read.csv("all_steese_live_clumped.csv")
+```
+
+The next piece reads in the merged data file (containing both only live saplings and trees from the steese in clumped format [treating clumps of deciduous as single trees]). It then calculates tree count and sum of basal area for each species at each site. I couldn't figure out how to retain treatment for some reason - may try playing with that later. I've also scaled up the sites that were subcounted. 
+
+```{r summing steese}
+live_clump_ST_all <- read.csv("all_steese_live_clumped.csv")
+# sum per species
+test <- live_clump_ST_all %>%
+  group_by(SITECODE,TYPE, SPP) %>%
+  summarize(COUNT = n(), BASAL = sum(BASAL)) %>%
+  ungroup() %>%
+  complete(SITECODE,TYPE, SPP, fill = list(COUNT = 0, BASAL = 0))
+test$SITE <- "STEESE"
+
+# Add division
+test$DIVISON <- NA
+test$DIVISON[test$SPP == "ALCR"] <- "d"
+test$DIVISON[test$SPP == "ARCT"] <- "d"
+test$DIVISON[test$SPP == "BENE"] <- "d"
+test$DIVISON[test$SPP == "POBA"] <- "d"
+test$DIVISON[test$SPP == "POTR"] <- "d"
+test$DIVISON[test$SPP == "SALIX"] <- "d"
+test$DIVISON[test$SPP == "PIME"] <- "c"
+
+# scale up quadrants   # 33_1 18_1 4_2 19_2 28_1
+# basal
+test$BASAL[test$SITECODE == "33_1"] <- test$BASAL[test$SITECODE == "33_1"]*2
+test$BASAL[test$SITECODE == "18_1"] <- test$BASAL[test$SITECODE == "18_1"]*2
+test$BASAL[test$SITECODE == "28_1"] <- test$BASAL[test$SITECODE == "28_1"]*2
+test$BASAL[test$SITECODE == "19_2"] <- test$BASAL[test$SITECODE == "19_2"]*2
+test$BASAL[test$SITECODE == "4_2"] <- test$BASAL[test$SITECODE == "4_2"]*2
+# count
+test$COUNT[test$SITECODE == "33_1"] <- test$COUNT[test$SITECODE == "33_1"]*2
+test$COUNT[test$SITECODE == "18_1"] <- test$COUNT[test$SITECODE == "18_1"]*2
+test$COUNT[test$SITECODE == "28_1"] <- test$COUNT[test$SITECODE == "28_1"]*2
+test$COUNT[test$SITECODE == "19_2"] <- test$COUNT[test$SITECODE == "19_2"]*2
+test$COUNT[test$SITECODE == "4_2"] <- test$COUNT[test$SITECODE == "4_2"]*2
+spp_all_live_clump_steese <- test ; rm(test)
+# changing site 36_3 to 36_1
+# spp_all_live_clump_steese$SITECODE[spp_all_live_clump_steese$SITECODE == "36_3"] <- "36_1"
+
+write.csv(spp_all_live_clump_steese, 
+          "Summed_spp_all_live_clump_steese.csv", row.names = FALSE)
+spp_all_live_clump_steese <- read.csv("Summed_spp_all_live_clump_steese.csv")
+```
+
+# Dalton
+
+```{r Formatting sapling / trees dalton}
+DNraw <- read.csv("data/DBH/dalton_ClumpDBH_NoZero.csv")
+  # IDing saplings
+    D_SAP <- DNraw[DNraw$DBH_AV[DNraw$CLUMP == "IND"] <2.5,] 
+    live_dalt_sap_clump <- D_SAP ; rm(D_SAP)
+    live_dalt_sap_clump$TYPE <- "SAPLING"
+  # IDing Trees
+    D_TREE <- DNraw[DNraw$DBH_AV > 2.5,]
+    live_dalt_trees_clump <- D_TREE ; rm(D_TREE)
+    live_dalt_trees_clump$TYPE <- "TREE"
+  # merging the two
+    live_clump_dalt_all <- rbind(live_dalt_sap_clump, live_dalt_trees_clump)
+    rm(live_dalt_sap_clump, live_dalt_trees_clump)
+    rm(DNraw)
+  # remove column id number
+    live_clump_dalt_all <- live_clump_dalt_all[-1]
+  # change salix species names
+    unique(live_clump_dalt_all$SPP)
+    live_clump_dalt_all$SPP[live_clump_dalt_all$SPP == "SAGL"] <- "SALIX"
+    live_clump_dalt_all$SPP[live_clump_dalt_all$SPP =="SA_7"] <- "SALIX"
+    live_clump_dalt_all$SPP[live_clump_dalt_all$SPP == "SA_6"] <- "SALIX"
+    live_clump_dalt_all$SPP[live_clump_dalt_all$SPP == "SA_5"] <- "SALIX"
+    live_clump_dalt_all$SPP[live_clump_dalt_all$SPP =="SADE"] <- "SALIX"
+    live_clump_dalt_all$SPP[live_clump_dalt_all$SPP =="SA_3"] <- "SALIX"
+    live_clump_dalt_all$SPP[live_clump_dalt_all$SPP =="SA_8"] <- "SALIX"
+    live_clump_dalt_all$SPP[live_clump_dalt_all$SPP =="SAPU"] <- "SALIX"
+    live_clump_dalt_all$SPP[live_clump_dalt_all$SPP =="SAGL_R"] <- "SALIX"
+    # live_clump_dalt_all$SPP[live_clump_dalt_all$SPP =="ARCTO"] <- "ARCT"
+  # checking for quandrants to scale up
+    unique(live_clump_dalt_all$SITECODE[live_clump_dalt_all$QUAD == 1]) # 44_0 
+    unique(live_clump_dalt_all$SITECODE[live_clump_dalt_all$QUAD == 0.1]) # 15_3 12_1 50_1 64_1
+  # transforming from dbh to basal
+    live_clump_dalt_all$BASAL_SITE <- live_clump_dalt_all$DBH_AV*live_clump_dalt_all$DBH_AV*0.005454
+  write.csv(live_clump_dalt_all, "all_dalton_live_clumped.csv", row.names = FALSE)
+  live_clump_dalt_all <- read.csv("all_dalton_live_clumped.csv", stringsAsFactors = FALSE)
+```
+
+```{r summing saplings / trees per spp dalton}
+live_clump_dalt_all <- read.csv("all_dalton_live_clumped.csv", stringsAsFactors = FALSE)
+# sum per species
+test <- live_clump_dalt_all %>%
+  group_by(SITECODE,TYPE, SPP) %>%
+  summarize(COUNT = n(), BASAL = sum(BASAL)) %>%
+  ungroup() %>%
+  complete(SITECODE,TYPE, SPP, fill = list(COUNT = 0, BASAL = 0))
+test$SITE <- "DALTON"
+ 
+ # Add division
+    unique(test$SPP)
+    test$DIVISON <- NA
+    test$DIVISON[test$SPP == "ALCR"] <- "d"
+    test$DIVISON[test$SPP == "ARCT"] <- "d"
+    test$DIVISON[test$SPP == "BENE"] <- "d"
+    # test$DIVISON[test$SPP == "POBA"] <- "d"
+    test$DIVISON[test$SPP == "POTR"] <- "d"
+    test$DIVISON[test$SPP == "SALIX"] <- "d"
+    test$DIVISON[test$SPP == "PIME"] <- "c"
+# changing leftover TLS site names
+    test$SITECODE[test$SITECODE == "12_1_TLS"] <- "12_1"
+    test$SITECODE[test$SITECODE == "50_1_TLS"] <- "50_1"
+    test$SITECODE[test$SITECODE == "64_1_TLS"] <- "64_1"
+    test$SITECODE[test$SITECODE == "65_1_TLS"] <- "65_1"
+  
+  # scale up 1 quadrants   # 44_0 
+    # basal
+      test$BASAL[test$SITECODE == "44_0"] <- test$BASAL[test$SITECODE == "44_0"]*2
+    # count
+      test$COUNT[test$SITECODE == "44_0"] <- test$COUNT[test$SITECODE == "44_0"]*2
+  # scaling up 0.1 quandrants # 15_3 12_1 50_1 64_1
+    # basal
+      test$BASAL[test$SITECODE == "15_3"] <- test$BASAL[test$SITECODE == "15_3"]*20
+      test$BASAL[test$SITECODE == "12_1"] <- test$BASAL[test$SITECODE == "12_1"]*20
+      test$BASAL[test$SITECODE == "50_1"] <- test$BASAL[test$SITECODE == "50_1"]*20
+      test$BASAL[test$SITECODE == "64_1"] <- test$BASAL[test$SITECODE == "64_1"]*20
+    # count
+      test$COUNT[test$SITECODE == "15_3"] <- test$COUNT[test$SITECODE == "15_3"]*20
+      test$COUNT[test$SITECODE == "12_1"] <- test$COUNT[test$SITECODE == "12_1"]*20
+      test$COUNT[test$SITECODE == "50_1"] <- test$COUNT[test$SITECODE == "50_1"]*20
+      test$COUNT[test$SITECODE == "64_1"] <- test$COUNT[test$SITECODE == "64_1"]*20
+spp_all_live_clump_dalt <- test ; rm(test, live_clump_dalt_all)    
+write.csv(spp_all_live_clump_dalt, "spp_all_live_clump_dalt.csv", row.names = FALSE)  
+spp_all_live_clump_dalt <- read.csv("spp_all_live_clump_dalt.csv")
+```
+
+# merging dalton and steese
+
+```{r merging dalton/steese and scaling to ha }
+spp_all_live_clump_dalt <- read.csv("spp_all_live_clump_dalt.csv")
+spp_all_live_clump_steese <- read.csv("Summed_spp_all_live_clump_steese.csv")
+spp_all_live_clump <- rbind(spp_all_live_clump_dalt, spp_all_live_clump_steese)
+rm(spp_all_live_clump_dalt, spp_all_live_clump_steese)
+
+colnames(spp_all_live_clump) <- c("SITECODE", "TYPE", "SPP", "COUNT_SITE",
+                                  "BASAL_SITE", "SITE", "DIVISON")
+# scaling counts up to hectare
+  spp_all_live_clump$COUNT_HA <- spp_all_live_clump$COUNT_SITE * 25
+# scaling basal area up to hectare
+  spp_all_live_clump$BASAL_HA <- spp_all_live_clump$BASAL_SITE * 25
+write.csv(spp_all_live_clump, "spp_all_live_clump_scaled.csv", row.names = FALSE)
+```
+
+In excel: 1) changed order of columns, 2) added treatment back in
+
+# adding site attributes
+
+```{r combining saplings/trees and site attributes}
+spp_all_live_clump <- read.csv("spp_all_live_clump_scaled.csv", stringsAsFactors = FALSE)
+site_attributes <- read.csv("all_site_attributes_solar.csv", stringsAsFactors = F)
+
+# need to expand each attribute x atleast 10 so copy/pasting into columns is easier
+
+site_attrib_expanded <- site_attributes %>% slice(rep(1:n(), each = 10))
+write.csv(site_attrib_expanded, "site_attrib_expand.csv", row.names = FALSE)
+rm(site_attrib_expanded, site_attributes)
+```
+
+In excel: 1) added in site attributes, 2) changed 36_3 to 36_1 (not sure why it didn't take)
+
+```{r adding substrate averages}
+spp_all_live_clump <- read.csv("spp_all_live_clump_scaled.csv", stringsAsFactors = F)
+
+# doing the same expansion with organic layer
+# exposed mineral
+  exp_min <- read.csv("data/exposed_min.csv")
+  exp_av <- exp_min %>% 
+    group_by(exp_min$SITE, exp_min$TREATMENT, exp_min$SITECODE) %>% 
+      summarise(AV = mean(MINERAL))
+  # fixing NAS
+    exp_av$AV[exp_av$`exp_min$SITECODE` == "41_1"] <- 22.5
+    exp_av$AV[exp_av$`exp_min$SITECODE` == "47_2"] <- 0
+  # expanding each row
+    exp_av <- exp_av %>% slice(rep(1:n(), each = 10))
+    write.csv(exp_av, "exp_av.csv", row.names = F)
+# organic layer averages
+   OL_depth <- read.csv("data/org_depth.csv")
+   OL_sum <- OL_depth %>% 
+        group_by(OL_depth$SITE, OL_depth$TREATMENT, OL_depth$SITE.CODE) %>% 
+          summarise(AV = mean(ORG_DEPTH))
+   # expanding each row
+  OL_sum <- OL_sum %>% slice(rep(1:n(), each = 14))
+  write.csv(OL_sum, "OL_sum.csv", row.names = FALSE)
+rm(OL_sum, OL_depth, exp_av, exp_min)  
+```
+
+In excel: added average organic layer and exposed mineral soil values. 
+
+
+# adding relative occupancy (relative proportion on plot) # IGNORE
+
+```{r summing number of stems per plot}
+# without having to leave file!!
+spp_all_live_clump <- read.csv("spp_all_live_clump_scaled.csv", stringsAsFactors = F)
+# summing total number of stems per plot
+test <- spp_all_live_clump %>%
+  group_by(SITE, TREAT, SITECODE) %>%
+  summarize(TOTAL_COUNT_SITE = sum(COUNT_SITE)) 
+test_dalt <- test[test$SITE == "DALTON",]
+test_dalt <- test_dalt %>% slice(rep(1:n(), each = 10))
+test_stee <- test[test$SITE == "STEESE",]
+test_stee <- test_stee %>% slice(rep(1:n(), each = 14))
+
+spp_all_live_clump_dalt <- spp_all_live_clump[spp_all_live_clump$SITE == "DALTON",]
+spp_all_live_clump_steese <- spp_all_live_clump[spp_all_live_clump$SITE == "STEESE",]
+
+spp_all_live_clump_dalt$TOTAL_COUNT_SITE <- test_dalt$TOTAL_COUNT_SITE
+spp_all_live_clump_steese$TOTAL_COUNT_SITE <- test_stee$TOTAL_COUNT_SITE
+spp_all_live_clump <- rbind(spp_all_live_clump_dalt, spp_all_live_clump_steese)
+write.csv(spp_all_live_clump, "spp_all_live_clump_scaled.csv", row.names = FALSE)
+rm(test, test_dalt, test_stee,spp_all_live_clump_dalt, spp_all_live_clump_steese)
+```
+
+```{r calculating spp proportion per site}
+spp_all_live_clump <- read.csv("spp_all_live_clump_scaled.csv", stringsAsFactors = F)
+spp_all_live_clump$SPP_PROP_SITE <- spp_all_live_clump$COUNT_SITE / spp_all_live_clump$TOTAL_COUNT_SITE
+write.csv(spp_all_live_clump, "spp_all_live_clump_scaled.csv", row.names = FALSE)
+```
+
+Actually, I think I want the total proportion of conifer vs deciduous at each plot - 
+
+```{r calculating division proportion per site}
+spp_all_live_clump <- read.csv("spp_all_live_clump_scaled.csv", stringsAsFactors = F)
+test <- spp_all_live_clump %>%
+  group_by(SITE, TREAT, SITECODE, TYPE, DIVISON) %>%
+  summarize(DIV_COUNT_SITE = sum(COUNT_SITE))
+  # need to expand both, but steese is larger (14)
+    test_dalt <- test[test$SITE == "DALTON",]
+    test_dalt <- test_dalt %>% slice(rep(1:n(), each = 10))
+    test_stee <- test[test$SITE == "STEESE",]
+    test_stee <- test_stee %>% slice(rep(1:n(), each = 14))
+  # split up the two - essentially transforming from rows to columns
+    test_dalt_conif <- test_dalt[test_dalt$DIVISON == "c",]
+    test_dalt_decid <- test_dalt[test_dalt$DIVISON == "d",]
+    test_stee_conif <- test_stee[test_stee$DIVISON == "c",]
+    test_stee_decid <- test_stee[test_stee$DIVISON == "d",]
+  # adding back in individually
+    spp_all_live_clump_dalt <- spp_all_live_clump[spp_all_live_clump$SITE == "DALTON",]
+    spp_all_live_clump_steese <- spp_all_live_clump[spp_all_live_clump$SITE == "STEESE",]
+    
+    spp_all_live_clump_dalt$CONIF_SAP_COUNT_SITE <- test_dalt_conif$DIV_COUNT_SITE
+    spp_all_live_clump_dalt$DECID_SAP_COUNT_SITE <- test_dalt_decid$DIV_COUNT_SITE
+    spp_all_live_clump_steese$CONIF_SAP_COUNT_SITE <- test_stee_conif$DIV_COUNT_SITE
+    spp_all_live_clump_steese$DECID_SAP_COUNT_SITE <- test_stee_decid$DIV_COUNT_SITE
+
+    spp_all_live_clump_dalt$CONIF_TREE_COUNT_SITE <- test_dalt_conif$DIV_COUNT_SITE
+    spp_all_live_clump_dalt$DECID_TREE_COUNT_SITE <- test_dalt_decid$DIV_COUNT_SITE
+    spp_all_live_clump_steese$CONIF_TREE_COUNT_SITE <- test_stee_conif$DIV_COUNT_SITE
+    spp_all_live_clump_steese$DECID_TREE_COUNT_SITE <- test_stee_decid$DIV_COUNT_SITE
+    
+spp_all_live_clump <- rbind(spp_all_live_clump_dalt, spp_all_live_clump_steese)
+
+# calculating proportion
+spp_all_live_clump$CONIF_SAP_PROP_SITE <- spp_all_live_clump$CONIF_COUNT_SITE / spp_all_live_clump$TOTAL_COUNT_SITE
+spp_all_live_clump$DECID_PROP_SITE <- spp_all_live_clump$DECID_COUNT_SITE / spp_all_live_clump$TOTAL_COUNT_SITE
+
+write.csv(spp_all_live_clump, "spp_all_live_clump_scaled.csv", row.names = FALSE)
+rm(test, test_dalt, test_stee,spp_all_live_clump_dalt, spp_all_live_clump_steese, test_stee_conif, test_stee_decid, test_dalt_conif, test_dalt_decid)
+```
+
+# summing density and basal area to conifer and deciduous #IGNORE
+```{r}
+spp_all_live_clump <- read.csv("spp_all_live_clump_scaled.csv", stringsAsFactors = F)
+
+# summing total number of stems per plot
+test <- spp_all_live_clump %>%
+  group_by(SITE, TREAT,SITECODE, TYPE, DIVISON) %>%
+  summarise(DIV_COUNT_HA = sum(COUNT_HA), DIV_BAS_HA = sum(BASAL_HA)) 
+# FIRST - COUNT_HA
+# need to expand both, but steese is larger (14)
+    test_dalt <- test[test$SITE == "DALTON",]
+    test_dalt <- test_dalt %>% slice(rep(1:n(), each = 10))
+    test_stee <- test[test$SITE == "STEESE",]
+    test_stee <- test_stee %>% slice(rep(1:n(), each = 14))
+  # split up the two - essentially transforming from rows to columns
+    test_dalt_conif <- test_dalt[test_dalt$DIVISON == "c",]
+    test_dalt_decid <- test_dalt[test_dalt$DIVISON == "d",]
+    test_stee_conif <- test_stee[test_stee$DIVISON == "c",]
+    test_stee_decid <- test_stee[test_stee$DIVISON == "d",]
+  # adding back in individually
+    spp_all_live_clump_dalt <- spp_all_live_clump[spp_all_live_clump$SITE == "DALTON",]
+    spp_all_live_clump_steese <- spp_all_live_clump[spp_all_live_clump$SITE == "STEESE",]
+    
+    spp_all_live_clump_dalt$CONIF_COUNT_HA <- test_dalt_conif$DIV_COUNT_HA
+    spp_all_live_clump_dalt$DECID_COUNT_HA <- test_dalt_decid$DIV_COUNT_HA
+    spp_all_live_clump_steese$CONIF_COUNT_HA <- test_stee_conif$DIV_COUNT_HA
+    spp_all_live_clump_steese$DECID_COUNT_HA <- test_stee_decid$DIV_COUNT_HA
+
+spp_all_live_clump <- rbind(spp_all_live_clump_dalt, spp_all_live_clump_steese)
+
+spp_all_live_clump_dalt$TOTAL_COUNT_SITE <- test_dalt$TOTAL_COUNT_SITE
+spp_all_live_clump_steese$TOTAL_COUNT_SITE <- test_stee$TOTAL_COUNT_SITE
+spp_all_live_clump <- rbind(spp_all_live_clump_dalt, spp_all_live_clump_steese)
+write.csv(spp_all_live_clump, "spp_all_live_clump_scaled.csv", row.names = FALSE)
+ rm(test, test_dalt, test_stee,spp_all_live_clump_dalt, spp_all_live_clump_steese)
+```
+
+
+# Splitting up saplings and trees
+
+I'm going to go ahead and start fresh - I want to split saplings and trees up entirely and calculate conifer/decid counts, proportions and basal area for each. 
+
+```{r splitting up saplings and trees}
+spp_all_live_clump <- read.csv("spp_all_live_clump_scaled.csv")
+# removing columns
+colnames(spp_all_live_clump)
+spp_all_live_clump <- spp_all_live_clump[1:18]
+spp_sap_live_clump <- spp_all_live_clump[spp_all_live_clump$TYPE == "SAPLING",]
+spp_tree_live_clump <- spp_all_live_clump[spp_all_live_clump$TYPE == "TREE",]
+write.csv(spp_sap_live_clump, "spp_sap_live_clump.csv", row.names = F)
+write.csv(spp_tree_live_clump, "spp_tree_live_clump.csv", row.names = F)
+```
+
+## Saplings
+```{r calculating proportion - decid vs conif sapling}
+rm(list = ls())
+sapling <- read.csv("spp_sap_live_clump.csv")
+
+# first - total stems per site
+test <- sapling %>%
+  group_by(SITE, TREAT, SITECODE) %>%
+  summarize(TOTAL_COUNT_SITE = sum(COUNT_SITE)) 
+test_dalt <- test[test$SITE == "DALTON",]
+test_dalt <- test_dalt %>% slice(rep(1:n(), each = 5))
+test_stee <- test[test$SITE == "STEESE",]
+test_stee <- test_stee %>% slice(rep(1:n(), each = 7))
+
+sap_dalt <- sapling[sapling$SITE == "DALTON",]
+sap_steese <- sapling[sapling$SITE == "STEESE",]
+
+sap_dalt$TOTAL_COUNT_SITE <- test_dalt$TOTAL_COUNT_SITE
+sap_steese$TOTAL_COUNT_SITE <- test_stee$TOTAL_COUNT_SITE
+sapling <- rbind(sap_dalt, sap_steese)
+write.csv(sapling, "spp_sap_live_clump.csv", row.names = F)
+rm(sap_dalt, sap_steese, test, test_dalt, test_stee)
+
+# Count deciduous & conifer stems per site
+sapling <- read.csv("spp_sap_live_clump.csv")
+test <- sapling %>%
+  group_by(SITE, TREAT, SITECODE, TYPE, DIVISON) %>%
+  summarize(DIV_COUNT_SITE = sum(COUNT_SITE))
+  # need to expand both, but steese is larger (14)
+    test_dalt <- test[test$SITE == "DALTON",]
+    test_dalt <- test_dalt %>% slice(rep(1:n(), each = 5))
+    test_stee <- test[test$SITE == "STEESE",]
+    test_stee <- test_stee %>% slice(rep(1:n(), each = 7))
+  # split up the two - essentially transforming from rows to columns
+    test_dalt_conif <- test_dalt[test_dalt$DIVISON == "c",]
+    test_dalt_decid <- test_dalt[test_dalt$DIVISON == "d",]
+    test_stee_conif <- test_stee[test_stee$DIVISON == "c",]
+    test_stee_decid <- test_stee[test_stee$DIVISON == "d",]
+  # adding back in individually
+    sap_dalt <- sapling[sapling$SITE == "DALTON",]
+    sap_steese <- sapling[sapling$SITE == "STEESE",]
+
+    sap_dalt$DECID_COUNT_SITE <- test_dalt_decid$DIV_COUNT_SITE
+    sap_dalt$CONIF_COUNT_SITE <- test_dalt_conif$DIV_COUNT_SITE
+    sap_steese$DECID_COUNT_SITE <- test_stee_decid$DIV_COUNT_SITE
+    sap_steese$CONIF_COUNT_SITE <- test_stee_conif$DIV_COUNT_SITE
+    sapling <- rbind(sap_dalt, sap_steese)
+    sapling$DECID_PROP_SITE <- sapling$DECID_COUNT_SITE / sapling$TOTAL_COUNT_SITE
+    sapling$CONIF_PROP_SITE <- sapling$CONIF_COUNT_SITE / sapling$TOTAL_COUNT_SITE
+    write.csv(sapling, "spp_sap_live_clump.csv", row.names = F)
+    rm(sap_dalt, sap_steese, test, test_dalt, test_stee, test_dalt_conif, test_dalt_decid, test_stee_decid, test_stee_conif)
+```
+
+```{r calculating density - decid vs conif sapling}
+sapling <- read.csv("spp_sap_live_clump.csv")
+
+# divide COUNT_HA into decid and conif
+test <- sapling %>%
+  group_by(SITE, TREAT, SITECODE, DIVISON) %>%
+  summarize(DIV_COUNT_HA = sum(COUNT_HA)) 
+
+    test_dalt <- test[test$SITE == "DALTON",]
+    test_dalt <- test_dalt %>% slice(rep(1:n(), each = 5))
+    test_stee <- test[test$SITE == "STEESE",]
+    test_stee <- test_stee %>% slice(rep(1:n(), each = 7))
+  # split up the two - essentially transforming from rows to columns
+    test_dalt_conif <- test_dalt[test_dalt$DIVISON == "c",]
+    test_dalt_decid <- test_dalt[test_dalt$DIVISON == "d",]
+    test_stee_conif <- test_stee[test_stee$DIVISON == "c",]
+    test_stee_decid <- test_stee[test_stee$DIVISON == "d",]
+  # adding back in individually
+    sap_dalt <- sapling[sapling$SITE == "DALTON",]
+    sap_steese <- sapling[sapling$SITE == "STEESE",]
+
+    sap_dalt$DECID_COUNT_HA <- test_dalt_decid$DIV_COUNT_HA
+    sap_dalt$CONIF_COUNT_HA <- test_dalt_conif$DIV_COUNT_HA
+    sap_steese$DECID_COUNT_HA <- test_stee_decid$DIV_COUNT_HA
+    sap_steese$CONIF_COUNT_HA <- test_stee_conif$DIV_COUNT_HA
+    sapling <- rbind(sap_dalt, sap_steese)
+    write.csv(sapling, "spp_sap_live_clump.csv", row.names = F)
+    rm(sap_dalt, sap_steese, test, test_dalt, test_stee, test_dalt_conif, test_dalt_decid, test_stee_decid, test_stee_conif)
+```
+
+```{r calculating basal area - conif vs decid sapling}
+sapling <- read.csv("spp_sap_live_clump.csv")
+
+# divide COUNT_HA into decid and conif
+test <- sapling %>%
+  group_by(SITE, TREAT, SITECODE, DIVISON) %>%
+  summarize(DIV_BASAL_HA = sum(BASAL_HA)) 
+
+    test_dalt <- test[test$SITE == "DALTON",]
+    test_dalt <- test_dalt %>% slice(rep(1:n(), each = 5))
+    test_stee <- test[test$SITE == "STEESE",]
+    test_stee <- test_stee %>% slice(rep(1:n(), each = 7))
+  # split up the two - essentially transforming from rows to columns
+    test_dalt_conif <- test_dalt[test_dalt$DIVISON == "c",]
+    test_dalt_decid <- test_dalt[test_dalt$DIVISON == "d",]
+    test_stee_conif <- test_stee[test_stee$DIVISON == "c",]
+    test_stee_decid <- test_stee[test_stee$DIVISON == "d",]
+  # adding back in individually
+    sap_dalt <- sapling[sapling$SITE == "DALTON",]
+    sap_steese <- sapling[sapling$SITE == "STEESE",]
+
+    sap_dalt$DECID_BASAL_HA <- test_dalt_decid$DIV_BASAL_HA
+    sap_dalt$CONIF_BASAL_HA <- test_dalt_conif$DIV_BASAL_HA
+    sap_steese$DECID_BASAL_HA <- test_stee_decid$DIV_BASAL_HA
+    sap_steese$CONIF_BASAL_HA <- test_stee_conif$DIV_BASAL_HA
+    sapling <- rbind(sap_dalt, sap_steese)
+    write.csv(sapling, "spp_sap_live_clump.csv", row.names = F)
+    rm(sap_dalt, sap_steese, test, test_dalt, test_stee, test_dalt_conif, test_dalt_decid, test_stee_decid, test_stee_conif)
+    write.csv(sapling, "sapling.csv", row.names = F)
+```
+
+## Trees
+```{r calculating proportion - decid vs conif tree}
+tree <- read.csv("spp_tree_live_clump.csv")
+
+# first - total stems per site
+test <- tree %>%
+  group_by(SITE, TREAT, SITECODE) %>%
+  summarize(TOTAL_COUNT_SITE = sum(COUNT_SITE)) 
+test_dalt <- test[test$SITE == "DALTON",]
+test_dalt <- test_dalt %>% slice(rep(1:n(), each = 5))
+test_stee <- test[test$SITE == "STEESE",]
+test_stee <- test_stee %>% slice(rep(1:n(), each = 7))
+
+tree_dalt <- tree[tree$SITE == "DALTON",]
+tree_steese <- tree[tree$SITE == "STEESE",]
+
+tree_dalt$TOTAL_COUNT_SITE <- test_dalt$TOTAL_COUNT_SITE
+tree_steese$TOTAL_COUNT_SITE <- test_stee$TOTAL_COUNT_SITE
+tree <- rbind(tree_dalt, tree_steese)
+write.csv(tree, "spp_tree_live_clump.csv", row.names = F)
+rm(tree_dalt, tree_steese, test, test_dalt, test_stee)
+
+# Count deciduous & conifer stems per site
+tree <- read.csv("spp_tree_live_clump.csv")
+test <- tree %>%
+  group_by(SITE, TREAT, SITECODE, TYPE, DIVISON) %>%
+  summarize(DIV_COUNT_SITE = sum(COUNT_SITE))
+  # need to expand both, but steese is larger (14)
+    test_dalt <- test[test$SITE == "DALTON",]
+    test_dalt <- test_dalt %>% slice(rep(1:n(), each = 5))
+    test_stee <- test[test$SITE == "STEESE",]
+    test_stee <- test_stee %>% slice(rep(1:n(), each = 7))
+  # split up the two - essentially transforming from rows to columns
+    test_dalt_conif <- test_dalt[test_dalt$DIVISON == "c",]
+    test_dalt_decid <- test_dalt[test_dalt$DIVISON == "d",]
+    test_stee_conif <- test_stee[test_stee$DIVISON == "c",]
+    test_stee_decid <- test_stee[test_stee$DIVISON == "d",]
+  # adding back in individually
+    tree_dalt <- tree[tree$SITE == "DALTON",]
+    tree_steese <- tree[tree$SITE == "STEESE",]
+
+    tree_dalt$DECID_COUNT_SITE <- test_dalt_decid$DIV_COUNT_SITE
+    tree_dalt$CONIF_COUNT_SITE <- test_dalt_conif$DIV_COUNT_SITE
+    tree_steese$DECID_COUNT_SITE <- test_stee_decid$DIV_COUNT_SITE
+    tree_steese$CONIF_COUNT_SITE <- test_stee_conif$DIV_COUNT_SITE
+    tree <- rbind(tree_dalt, tree_steese)
+
+    tree$DECID_PROP_SITE <- tree$DECID_COUNT_SITE / tree$TOTAL_COUNT_SITE
+    tree$CONIF_PROP_SITE <- tree$CONIF_COUNT_SITE / tree$TOTAL_COUNT_SITE
+    write.csv(tree, "spp_tree_live_clump.csv", row.names = F)
+    rm(tree_dalt, tree_steese, test, test_dalt, test_stee, test_dalt_conif, test_dalt_decid, test_stee_conif, test_stee_decid)
+```
+
+```{r calculating density - decid vs conif}
+tree <- read.csv("spp_tree_live_clump.csv")
+
+# divide COUNT_HA into decid and conif
+test <- tree %>%
+  group_by(SITE, TREAT, SITECODE, DIVISON) %>%
+  summarize(DIV_COUNT_HA = sum(COUNT_HA)) 
+
+    test_dalt <- test[test$SITE == "DALTON",]
+    test_dalt <- test_dalt %>% slice(rep(1:n(), each = 5))
+    test_stee <- test[test$SITE == "STEESE",]
+    test_stee <- test_stee %>% slice(rep(1:n(), each = 7))
+  # split up the two - essentially transforming from rows to columns
+    test_dalt_conif <- test_dalt[test_dalt$DIVISON == "c",]
+    test_dalt_decid <- test_dalt[test_dalt$DIVISON == "d",]
+    test_stee_conif <- test_stee[test_stee$DIVISON == "c",]
+    test_stee_decid <- test_stee[test_stee$DIVISON == "d",]
+  # adding back in individually
+    tree_dalt <- tree[tree$SITE == "DALTON",]
+    tree_steese <- tree[tree$SITE == "STEESE",]
+
+    tree_dalt$DECID_COUNT_HA <- test_dalt_decid$DIV_COUNT_HA
+    tree_dalt$CONIF_COUNT_HA <- test_dalt_conif$DIV_COUNT_HA
+    tree_steese$DECID_COUNT_HA <- test_stee_decid$DIV_COUNT_HA
+    tree_steese$CONIF_COUNT_HA <- test_stee_conif$DIV_COUNT_HA
+    tree <- rbind(tree_dalt, tree_steese)
+    write.csv(tree, "spp_tree_live_clump.csv", row.names = F)
+    rm(tree_dalt, tree_steese, test, test_dalt, test_stee, test_dalt_conif, test_dalt_decid, test_stee_conif, test_stee_decid)
+```
+
+```{r calculating basal area - conif vs decid}
+tree <- read.csv("spp_tree_live_clump.csv")
+
+# divide COUNT_HA into decid and conif
+test <- tree %>%
+  group_by(SITE, TREAT, SITECODE, DIVISON) %>%
+  summarize(DIV_BASAL_HA = sum(BASAL_HA)) 
+
+    test_dalt <- test[test$SITE == "DALTON",]
+    test_dalt <- test_dalt %>% slice(rep(1:n(), each = 5))
+    test_stee <- test[test$SITE == "STEESE",]
+    test_stee <- test_stee %>% slice(rep(1:n(), each = 7))
+  # split up the two - essentially transforming from rows to columns
+    test_dalt_conif <- test_dalt[test_dalt$DIVISON == "c",]
+    test_dalt_decid <- test_dalt[test_dalt$DIVISON == "d",]
+    test_stee_conif <- test_stee[test_stee$DIVISON == "c",]
+    test_stee_decid <- test_stee[test_stee$DIVISON == "d",]
+  # adding back in individually
+    tree_dalt <- tree[tree$SITE == "DALTON",]
+    tree_steese <- tree[tree$SITE == "STEESE",]
+
+    tree_dalt$DECID_BASAL_HA <- test_dalt_decid$DIV_BASAL_HA
+    tree_dalt$CONIF_BASAL_HA <- test_dalt_conif$DIV_BASAL_HA
+    tree_steese$DECID_BASAL_HA <- test_stee_decid$DIV_BASAL_HA
+    tree_steese$CONIF_BASAL_HA <- test_stee_conif$DIV_BASAL_HA
+    tree <- rbind(tree_dalt, tree_steese)
+    write.csv(tree, "spp_tree_live_clump.csv", row.names = F)
+    rm(tree_dalt, tree_steese, test, test_dalt, test_stee, test_dalt_conif, test_dalt_decid, test_stee_conif, test_stee_decid)
+    write.csv(tree, "tree.csv", row.names = F)
+```
+
+# seedlings
+```{r formatting seedlings}
+seedling <- read.csv("data/seedlingRegen.csv")
+# getting rid of columns I won't need
+  # browsing
+    seedling <- seedling[-7] ; seedling <- seedling[-7] 
+    seedling <- seedling[-9] ; seedling <- seedling[-9]
+    seedling <- seedling[1:9]
+    # getting rid of SITENUM
+      seedling <- seedling[-3]
+write.csv(seedling, "seedling.csv", row.names = F)
+seedling <- read.csv("seedling.csv")
+```
+
+```{r proportion of decid / conif - seedling}
+# calculating sum of decid & conif per plot
+test <- seedling %>% 
+  group_by(SITE, TREAT, SITECODE, DIVISION) %>%
+  summarise(DIV_COUNT_SITE = sum(SPP_TOTAL_COUNT))
+  # seedling file has the same number of species, so don't need to split by site
+    test <- test %>% slice(rep(1:n(), each = 8))
+  # split up the two - essentially transforming from rows to columns
+    test_dalt <- test[test$SITE == "Upland",]
+    test_stee <- test[test$SITE == "Lowland",]
+    test_dalt_conif <- test_dalt[test_dalt$DIVISION == "c",]
+    test_dalt_decid <- test_dalt[test_dalt$DIVISION == "d",]
+    test_stee_conif <- test_stee[test_stee$DIVISION == "c",]
+    test_stee_decid <- test_stee[test_stee$DIVISION == "d",]
+
+    seed_dalt <- seedling[seedling$SITE == "Upland",]
+    seed_stee <- seedling[seedling$SITE == "Lowland",]
+  # adding back in as columns
+    seed_dalt$DECID_COUNT_SITE <- test_dalt_decid$DIV_COUNT_SITE
+    seed_dalt$CONIF_COUNT_SITE <- test_dalt_conif$DIV_COUNT_SITE
+    seed_stee$DECID_COUNT_SITE <- test_stee_decid$DIV_COUNT_SITE
+    seed_stee$CONIF_COUNT_SITE <- test_stee_conif$DIV_COUNT_SITE
+    seedling <- rbind(seed_dalt, seed_stee)
+  # calculating proportion
+seedling$DECID_PROP_SITE <-
+  seedling$DECID_COUNT_SITE/seedling$SITE_TOTAL_COUNT
+seedling$CONIF_PROP_SITE <- seedling$CONIF_COUNT_SITE / seedling$SITE_TOTAL_COUNT
+write.csv(seedling, "seedling.csv", row.names = F)
+rm(test, test_conif, test_decid, test_dalt, test_dalt_conif, test_dalt_decid, test_stee, test_stee_conif, test_stee_decid, seed_dalt, seed_stee)
+```
+
+```{r density decid / conifer - seedling}
+seedling <- read.csv("seedling.csv")
+# calculating count per hectare
+# adding sqaure meter counts
+    seedling$CONIF_COUNT_M <- seedling$CONIF_COUNT_PLOT / 400
+    seedling$DECID_COUNT_M <- seedling$DECID_COUNT_PLOT / 400
+  # scaling up from 1 quadrant to plot
+    seedling$CONIF_COUNT_PLOT <- seedling$CONIF_COUNT_SITE * 4
+    seedling$DECID_COUNT_PLOT <- seedling$DECID_COUNT_SITE * 4
+  # scaling up to hectare
+    seedling$CONIF_COUNT_HA <- seedling$CONIF_COUNT_PLOT * 25
+    seedling$DECID_COUNT_HA <- seedling$DECID_COUNT_PLOT * 25
+write.csv(seedling, "seedling.csv", row.names = F)
+```
+
+## adding in site attributes to seedlings
+```{r}
+seedling <- read.csv("seedling.csv")
+tree <- read.csv("tree.csv")
+# extracting values from tree
+test <- tree %>%
+  group_by(SITE, TREAT, SITECODE) %>%
+  summarize(LONG = mean(LONG), LAT = mean(LAT),
+            SLOPE = mean(SLOPE), SOLAR = mean(SOLAR), 
+            ELEVATION = mean(ELEVATION), OL_AV = mean(OL_AV), EXP_MIN = mean(EXP_MIN))
+# expanding to 8 replicates and splitting between sites
+  test_dalt <- test[test$SITE == "DALTON",]
+  test_dalt <- test_dalt %>% slice(rep(1:n(), each = 8))
+  test_stee <- test[test$SITE == "STEESE",]
+  test_stee <- test_stee %>% slice(rep(1:n(), each = 8))
+# splitting seedlings
+  seed_dalt <- seedling[seedling$SITE == "Upland",]
+  seed_stee <- seedling[seedling$SITE == "Lowland",]
+# adding attributes
+  seed_dalt$LONG <- test_dalt$LONG
+  seed_dalt$LAT <- test_dalt$LAT
+  seed_dalt$SLOPE <- test_dalt$SLOPE
+  seed_dalt$SOLAR <- test_dalt$SOLAR
+  seed_dalt$ELEVATION <- test_dalt$ELEVATION
+  seed_dalt$OL_AV <- test_dalt$OL_AV
+  seed_dalt$EXP_MIN <- test_dalt$EXP_MIN
+  seed_stee$LONG <- test_stee$LONG
+  seed_stee$LAT <- test_stee$LAT
+  seed_stee$SLOPE <- test_stee$SLOPE
+  seed_stee$SOLAR <- test_stee$SOLAR
+  seed_stee$ELEVATION <- test_stee$ELEVATION
+  seed_stee$OL_AV <- test_stee$OL_AV
+  seed_stee$EXP_MIN <- test_stee$EXP_MIN
+  colnames(seed_dalt)
+  colnames(seed_stee)
+  seedling <- rbind(seed_dalt, seed_stee)
+  write.csv(seedling, "seedling.csv", row.names = F)
+rm(test, test_dalt, test_stee, seed_stee, seed_dalt)
+```
+

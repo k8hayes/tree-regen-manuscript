@@ -1,0 +1,12 @@
+"0","substrate <- plot_grid( org_depth_plot, expose_min_plot,
+          nrow = 1, ncol = 2,
+          rel_widths = c(0.95,1.25),
+          labels = c(""A."", ""B.""))
+"
+"2","Removed 2 rows containing non-finite values (stat_boxplot)."
+"0","substrate <- plot_grid( org_depth_plot, expose_min_plot,"
+"0","          nrow = 1, ncol = 2,"
+"0","          rel_widths = c(0.95,1.25),"
+"0","          labels = c(""A."", ""B.""))"
+"2","Removed 2 rows containing non-finite values (stat_boxplot)."
+"0","save_plot(""substrate.png"", substrate, nrow = 1, ncol = 2, base_aspect_ratio = 1.5)"

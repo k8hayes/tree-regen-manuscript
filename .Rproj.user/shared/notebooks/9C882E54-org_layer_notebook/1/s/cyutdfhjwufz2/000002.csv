@@ -1,0 +1,15 @@
+"0","```r
+exposed_min <- read.csv(\"data/exposed_min.csv\")
+expose_min_plot <- ggplot(exposed_min, 
+                          aes(x = factor(exposed_min$TREATMENT),
+                              y = exposed_min$MINERAL,
+                              fill = exposed_min$SITE)) + 
+    geom_boxplot() + 
+    scale_fill_manual(name = \"Site Type\",
+                      values = c(\"#d9d9d9\", \"#ffffff\"), 
+                      labels = c(\"Upland\", \"Lowland\")) + 
+    labs(title = \"Exposed Mineral Soil\", 
+         x = \"Number of Fires\", y = \"% of Mineral Soil Exposed\") + 
+    theme(plot.title = element_text(hjust = 0))
+expose_min_plot
+```"

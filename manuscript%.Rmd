@@ -1,0 +1,68 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(dplyr)
+rm(list = ls())
+```
+
+
+```{r}
+tree <- read.csv("tree.csv")
+sapling <- read.csv("sapling.csv")
+seedling <- read.csv("seedling.csv")
+```
+
+
+```{r}
+tree$SPP_PROP <- tree$COUNT_SITE / tree$TOTAL_COUNT_SITE
+
+unique(tree$SITECODE[tree$TOTAL_COUNT_SITE == 0])
+
+meantree <- tree %>%
+  group_by(tree$TREAT, tree$SITE, tree$SPP) %>%
+  na.omit() %>%
+  summarize(MEAN_PROP = mean(SPP_PROP), SD = sd(SPP_PROP)) 
+meantree$MEAN_PROP <- meantree$MEAN_PROP * 100
+meantree$SD <- meantree$SD * 100
+
+# tree density
+meantreedens <- tree %>%
+  group_by(tree$TREAT, tree$SITE) %>%
+  summarize(mean_Dens = mean(COUNT_HA), sd = sd(COUNT_HA))
+
+# tree basal
+meantreebas <- tree %>%
+  group_by(tree$TREAT, tree$SITE) %>%
+  summarise(meanbas = mean(BASAL_HA), sd = sd(BASAL_HA) )
+
+tree_dalt <- tree[tree$SITE == "DALTON",]
+tree_stee <- tree[tree$SITE == "STEESE",]
+tree_dalt <- tree_dalt[tree_dalt$DIVISON == "c",]
+tree_stee <- tree_stee[tree_stee$DIVISON == "c",]
+t.test(tree_dalt$BASAL_HA[tree_dalt$TREAT == 0], tree_stee$BASAL_HA[tree_stee$TREAT == 0])
+```
+
+
+```{r}
+sapling$SPP_PROP <- sapling$COUNT_SITE / sapling$TOTAL_COUNT_SITE
+meansap <- sapling %>%
+  group_by(sapling$TREAT, sapling$SITE, sapling$SPP) %>%
+  summarise(mean = mean(SPP_PROP), sd = sd(SPP_PROP), mean_count = mean(COUNT_SITE))
+
+meansap$mean <- meansap$mean *100
+meansap$sd <- meansap$sd * 100
+```
+
+```{r}
+seedling$SPP_PROP <- seedling$SPP_TOTAL_COUNT / seedling$SITE_TOTAL_COUNT
+meanseed <- seedling %>%
+  group_by(seedling$TREAT, seedling$SITE, seedling$SPP) %>%
+  summarise(MEAN_SPP = mean(SPP_PROP),
+            SD = sd(SPP_PROP))
+meanseed$MEAN_SPP <- meanseed$MEAN_SPP*100
+meanseed$SD <- meanseed$SD*100
+```
+

@@ -1,0 +1,199 @@
+---
+title: "GLME"
+output: html_notebook
+---
+# running generalized linear mixed effect models
+## reburn manuscript
+
+Some package documentation:
+## sjPlot: 
+- https://strengejacke.wordpress.com/2017/10/23/one-function-to-rule-them-all-visualization-of-regression-models-in-rstats-w-sjplot/
+
+```{r packages and the reason for their inclusion}
+library(lme4)
+library(sjPlot) # plot_model() function
+library(lattice)
+library(nlme)
+library(here)
+library(effectsize) # standardize() function
+library(parameters) # model_parameters()
+library(ggplot2) # ggplot 4ever <3
+library(cowplot) # modifies defaults of ggplot, allows for better arrangement/export of figures
+theme_set(theme_cowplot()) # gets rid of grey background / grid lines
+options(scipen = 9999)
+```
+1/31 - I'm changing my approach to running these models according to the following suggestions from my meeting with Brian.
+- Lump trees and saplings together (no sense in making my sample size any smaller than it is...)
+- remove the unburned sites, since they aren't really a comparable reference. if the point is to quantify post-fire regeneration, then we're really examining different things by including them
+- [KEY INSIGHT] run the analysis in two steps:
+1) quantify the effect of fire with the random effect of site - in essence, what's the effect of fire on density/basal/etc at both dalton and steese
+2) beyond the effect of fire, what are the key environmental factors driving postfire regen of conif/decid?
+
+I'll be cutting a lot of code to make this happen
+
+2/4/20 - changing this again! had a really helpful meeting with Wunder
+- my approach before was to assume fire and site type interact to influence regeneration. Really, the better approach is comparing the fit of the two model structures (interacting and non-interacting), and then go from there
+
+2/26/20 - this insight was from a few weeks ago, but I can take elevation out of the site attribute models
+- also need to convert basal area from cm2/ha to ft2/acre
+
+3/2/20 - 
+- finishing up removing elevation from site attribute models 
+- converting basal area to m2/ha
+- adding seedlings into density model
+
+# basal area: combining trees and saplings [both]
+```{r combining trees saplings}
+tree <- read.csv(here("tree regen manuscript/tree.csv"))
+sapling <- read.csv(here("tree regen manuscript/sapling.csv"))
+both <- rbind(tree, sapling) ; rm(tree, sapling)
+
+# standardize all fixed effects (allows for comparison of effect sizes) # function comes from "effectsize" pkge
+both$OL_AV <- standardize(both$OL_AV)
+both$SLOPE <- standardize(both$SLOPE)
+both$SOLAR <- standardize(both$SOLAR)
+both$EXP_MIN <- standardize(both$EXP_MIN)
+
+# removing unburned sites
+ba <- ba[ba$TREAT !=0,]
+```
+
+# calculating effect sizes and interaction of fire and site type
+```{r effect of fire and site type on density}
+# conifer density
+# model acronym: modeled conifer density fire 
+mCDF1 <- lmer(CONIF_COUNT_HA ~ TREAT+ (1|SITECODE), data = both) 
+mCDF2 <- lmer(CONIF_COUNT_HA ~ SITE + (1|SITECODE), data = both)
+mCDF4 <- lmer(CONIF_COUNT_HA ~ TREAT*SITE + (1|SITECODE), data = both) 
+mCDF3 <- lmer(CONIF_COUNT_HA ~ TREAT + SITE + (1|SITECODE), data = both) 
+anova(mCDF1, mCDF2, mCDF3, mCDF4)
+summary(mCDF1)
+model_parameters(mCDF1)
+
+# double checking significance of interactive effect
+plot_model(mCDF1, type = "pred", terms = c("TREAT", "SITE"), show.data = T) # plots the model with CI # not as useful for conifers
+model_parameters(mCDF2) # prints parameters # used in figure 2
+
+# deciduous density
+# model acronym: modeled decid density fire
+mDDF1 <- lmer(DECID_COUNT_HA ~ TREAT + (1 | SITECODE), data = both)
+mDDF2 <- lmer(DECID_COUNT_HA ~ SITE + (1 | SITECODE), data = both)
+mDDF3 <- lmer(DECID_COUNT_HA ~ TREAT + SITE + (1|SITECODE), data = both)
+mDDF4 <- lmer(DECID_COUNT_HA ~ TREAT*SITE + (1|SITECODE), data = both)
+anova(mDDF1, mDDF2, mDDF3, mDDF4)
+anova(mDDF1, mDDF3)
+summary(mDDF2)
+model_parameters(mDDF1)
+
+plot_model(mDDF2, show.values = T, show.p = T, sort.est = T) # plots effect size # show values/p shows value/p 
+plot_model(mDDF2, type = "pred", terms = c("TREAT", "SITE")) # like as a visual # but 1.5 fires is not a real thing
+plot_model(mDDF2, type = "pred", terms = c("TREAT", "SITE"), show.data = T) # dalton outlier messes this up a bit
+model_parameters(mDDF2)
+```
+
+
+```{r effect of fire and site type on basal area}
+spp_ba <- read.csv(here("tree regen manuscript/spp_ba.csv"), stringsAsFactors = F)
+spp_ba <- spp_ba[spp_ba$TREAT != 0,]
+spp_ba <- spp_ba[spp_ba$DIV == "c",]
+# conifer basal area
+# model acronym: modeled conifer basal area fire
+mCBF1 <- lmer(BA_DIV ~ TREAT + (1|PLOT), data = spp_ba)
+mCBF2 <- lmer(BA_DIV ~ SITE + (1|PLOT), data = spp_ba)
+mCBF3 <- lmer(BA_DIV ~ TREAT +SITE + (1|PLOT), data = spp_ba)
+mCBF4 <- lmer(BA_DIV ~ TREAT*SITE + (1|PLOT), data = spp_ba)
+anova(mCBF1, mCBF2, mCBF3, mCBF4)
+plot_model(mCBF2, type = "pred", terms = c("TREAT", "SITE"))
+plot_model(mCBF2, type = "pred", terms = c("TREAT", "SITE"), show.data = T) # similar outlier issue
+model_parameters(mCBF1)
+
+# deciduous basal area
+spp_ba <- read.csv(here("tree regen manuscript/spp_ba.csv"),
+                   stringsAsFactors = F)
+spp_ba <- spp_ba[spp_ba$TREAT != 0,]
+spp_ba <- spp_ba[spp_ba$DIV == "d",]
+# model acronym: modeled deciduous basal area fire
+mDBF1 <- lmer(BA_DIV ~ TREAT + (1|PLOT), data = spp_ba)
+mDBF2 <- lmer(BA_DIV ~ SITE + (1|PLOT), data = spp_ba)
+mDBF3 <- lmer(BA_DIV ~ TREAT +SITE + (1|PLOT), data = spp_ba)
+mDBF4 <- lmer(BA_DIV ~ TREAT*SITE + (1|PLOT), data = spp_ba)
+anova(mDBF1, mDBF2)
+anova(mDBF2, mDBF3)
+anova(mDBF2, mDBF4)
+anova(mDBF1, mDBF2, mDBF3, mDBF4)
+AIC(mDBF1, mDBF2, mDBF3, mDBF4)
+summary(mDBF1)
+
+model_parameters(mDBF3)
+plot_model(mDBF2, type = "pred", terms = c("TREAT", "SITE"))
+plot_model(mDBF2, type = "pred", terms = c("TREAT", "SITE"), show.data = T) # not terrible? 
+model_parameters(mDBF2)
+```
+
+# Modeling the effects of site attributes
+```{r effects of site attributes on conifer density}
+# conifer density
+# model acronym: modeled conifer density site attributes
+# started with: SLOPE + SOLAR  + OL_AV + EXP_MIN + (1 + TREAT | SITE)
+  # removed: EXP_MIN
+mCDS1 <- lmer(CONIF_COUNT_HA ~ OL_AV + EXP_MIN  + (1 | TREAT ), data = both)
+mCDS2 <- lmer(CONIF_COUNT_HA ~  EXP_MIN  + (1 | TREAT ), data = both)
+anova(mCDS1, mCDS2) # mCDS1
+summary(mCDS1)
+model_parameters(mCDS1)
+
+plot_model(mCDS2, show.values = T, show.p = T, sort.est = T) # same function as before # now plotting effect sizes
+plot_model(mCDS1, show.values = T, show.p = T, sort.est = T)
+# show.p and show.values show what they say # sort.est sorts by effect size
+# effect sizes/significance entered into table 4
+```
+```{r effects of site attributes on deciduous density}
+# deciduous density
+# model acronym: modeled deciduous density site attributes
+# started with: SLOPE + SOLAR  + ELEVATION  + OL_AV + EXP_MIN + (1 + TREAT | SITE)
+  # removed: SLOPE
+mDDS1 <- lmer(DECID_COUNT_HA ~ SLOPE + EXP_MIN  + OL_AV + (1 | TREAT ), data = both) 
+mDDS2 <- lmer(DECID_COUNT_HA ~  OL_AV + EXP_MIN + (1 | TREAT), data = both) 
+anova(mDDS1, mDDS2) # mDDS1
+model_parameters(mDDS1)
+
+plot_model(mDDS2, show.values = T, show.p = T, sort.est = T)
+plot_model(mDDS1, show.values = T, show.p = T, sort.est = T)
+```
+```{r effects of site attributes on conifer basal}
+# conifer basal area
+# model acronym: modeled conifer basal area site attributes
+# started with: SLOPE + SOLAR + OL_AV + EXP_MIN + (1 + TREAT | SITE)
+  # removed: EXP_MIN
+mCBS1 <- lmer(CONIF_BASAL_HA ~ SLOPE + SOLAR + OL_AV + (1 | TREAT), data = both) 
+mCBS2 <- lmer(CONIF_BASAL_HA ~ SOLAR + OL_AV + (1 | TREAT), data = both) 
+anova(mCBS1, mCBS2) # mCBS1
+summary(mCBS1)
+model_parameters(mCBS1)
+
+plot_model(mCBS2, show.values = T, show.p = T, sort.est = T) 
+plot_model(mCBS1, show.values = T, show.p = T, sort.est = T)
+```
+
+```{r effects of site attributes on deciduous basal area}
+spp_ba <- read.csv(here("tree regen manuscript/spp_ba.csv"),
+                   stringsAsFactors = F)
+spp_ba <- spp_ba[spp_ba$TREAT != 0,]
+spp_ba <- spp_ba[spp_ba$DIV == "d",]
+spp_ba$OL_AV <- standardize(spp_ba$OL_AV)
+spp_ba$SLOPE <- standardize(spp_ba$SLOPE)
+spp_ba$SOLAR <- standardize(spp_ba$SOLAR)
+spp_ba$EXP_MIN <- standardize(spp_ba$EXP_MIN)
+# deciduous basal area
+# model acronym: modeled deciduous basal area site attributes
+# started with: SLOPE + SOLAR + OL_AV + EXP_MIN + (1 + TREAT | SITE)
+  # removed: SLOPE, SOLAR, EXP_MIN
+mDBS1 <- lmer(BA_DIV ~  SLOPE + OL_AV + EXP_MIN + (1 | SITE), data = spp_ba) 
+mDBS2 <- lmer(BA_DIV ~   SLOPE  + OL_AV +(1 | SITE), data = spp_ba) 
+anova(mDBS1, mDBS2) # mDBS1
+model_parameters(mDBS1)
+
+plot_model(mDBS2, show.values = T, show.p = T) 
+plot_model(mDBS1, show.values = T, show.p = T)
+summary(mDBS2) # retrieving effect size/significance
+```

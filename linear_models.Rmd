@@ -1,0 +1,83 @@
+---
+title: "linear models"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(sjPlot) 
+library(here)
+library(parameters)
+library(ggplot2) 
+library(cowplot); theme_set(theme_cowplot()) 
+options(scipen = 9999)
+```
+
+```{r loading in files}
+# density
+tree <- read.csv(here("tree.csv"))
+sapling <- read.csv(here("sapling.csv"))
+both <- rbind(tree, sapling) ; rm(tree, sapling)
+both <- both[both$TREAT !=0,] # removing unburned sites
+
+# basal area
+ba <- read.csv(here("ba.csv"), stringsAsFactors = F)
+ba <- ba[ba$TREAT != 0,]
+```
+
+# Modeling tree density
+## Conifer tree density
+Fire has a significant negative effect, site has a non-significant positive effect.
+```{r conifer density}
+# conifer tree density
+mC_D <- lm(CONIF_COUNT_HA ~ TREAT+ SITE, data = both) 
+summary(mC_D); model_parameters(mC_D)
+
+# visualizing results
+# effect sizes
+plot_model(mC_D, show.values = T, show.p = T, sort.est = T)
+# predicted values
+plot_model(mC_D, type = "pred", terms = c("TREAT", "SITE"))
+```
+
+I'm definitely not planning on using any of the "predicted values" graphs - since 1.5 fires isn't a meaningful value - but they've been useful in thinking about the differences between sites. 
+
+## Deciduous tree density
+Both fire and site have signifcantly positive effects. 
+```{r}
+# deciduous density
+mD_D <- lm(DECID_COUNT_HA ~ TREAT + SITE, data = both)
+summary(mD_D); model_parameters(mD_D)
+
+# effect sizes
+plot_model(mD_D, show.values = T, show.p = T, sort.est = T) 
+# predicted values
+plot_model(mD_D, type = "pred", terms = c("TREAT", "SITE"))
+```
+
+# Modeling basal area
+## Conifer basal area
+Neither fire nor site have significant effects? I think this is because the numbers are so low - there's not really a decline with fire, since that decline happens almost entirely after one fire.
+```{r}
+# MODEL -  conifer basal area
+  mC_BA <- lm(CONIF_BA ~ TREAT + SITE, data = ba)
+  summary(mC_BA); model_parameters(mC_BA)
+  
+  # effect sizes
+  plot_model(mC_BA, show.values = T, show.p = T, sort.est = T)
+  # predicted values
+  plot_model(mC_BA, type = "pred", terms = c("TREAT", "SITE")) 
+```
+
+# Deciduous basal area
+Effects of both fire and site are significant / positive. 
+```{r}
+# modelled deciduous basal area
+  mD_BA <- lm(DECID_BA ~ TREAT + SITE, data = ba)
+  summary(mD_BA); model_parameters(mD_BA)
+  
+  # effect sizes
+  plot_model(mD_BA, show.values = T, show.p = T, sort.est = T)
+  # predicted values
+  plot_model(mD_BA, type = "pred", terms = c("TREAT", "SITE"))
+```
+

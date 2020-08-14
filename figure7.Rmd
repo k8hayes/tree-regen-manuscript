@@ -1,0 +1,195 @@
+---
+title: "Figure 7"
+output: html_notebook
+---
+
+# adventitious roots, organic layer and exposed mineral soil
+
+```{r setting up}
+  library(ggplot2)
+  library(cowplot)
+  library(dplyr)
+  library(here)
+  theme_set(theme_cowplot())
+```
+
+# adventitous roots
+
+```{r adventitous roots plot}
+adven_root <- read.csv(here("data/adventaguous_roots.csv"))
+adven_root_plot <- ggplot(adven_root, 
+                          aes(x = factor(TREAT),
+                              y = DEPTH, 
+                              fill = SITE)) + 
+  geom_boxplot() + 
+  labs(x = "Number of Fires", y = "Depth (cm)",
+       title = "Adventitious Roots") + 
+  scale_fill_manual(values = c("#d9d9d9", "#ffffff"), name = "Site Type", labels = c("Upland", "Lowland")) + 
+  theme(plot.title = element_text(hjust = 0)) + xlim("1", "2")
+adven_root_plot
+save_plot("adven_root.png", adven_root_plot, base_aspect_ratio = 1.5)
+```
+
+# organic layer depth
+
+```{r organic layer plot}
+org_depth <- read.csv(here("data/org_depth.csv"))
+ org_depth_plot <- ggplot(org_depth, 
+                          aes(x = factor(TREATMENT), y = ORG_DEPTH, 
+                              fill = SITE)) + 
+    geom_boxplot()   + 
+    scale_fill_manual(name = "Site Type",
+                      values = c("#d9d9d9", "#ffffff"), 
+                      labels = c("Upland", "Lowland")) + 
+    labs(title = "Organic Layer Depth", 
+         x = "Number of Fires", y = "Organic layer depth (cm)") + 
+    theme(plot.title = element_text(hjust = 0), legend.position =  "none") 
+org_depth_plot
+  
+# save_plot("org_depth.png", org_depth_plot, base_aspect_ratio = 1.5)
+```
+
+# Exposed mineral soil
+
+```{r exposed mineral soil}
+exposed_min <- read.csv(here("data/exposed_min.csv"))
+expose_min_plot <- ggplot(exposed_min, 
+                          aes(x = factor(TREATMENT),
+                              y = MINERAL,
+                              fill = SITE)) + 
+    geom_boxplot() + 
+    scale_fill_manual(name = "Site Type",
+                      values = c("#d9d9d9", "#ffffff"), 
+                      labels = c("Upland", "Lowland")) + 
+    labs(title = "Exposed Mineral Soil", 
+         x = "Number of Fires", y = "% of Mineral Soil Exposed") + 
+    theme(plot.title = element_text(hjust = 0))
+expose_min_plot
+```
+
+# combining all three
+```{r combined }
+substrate <- plot_grid( org_depth_plot, expose_min_plot,
+          nrow = 1, ncol = 2,
+          rel_widths = c(0.95,1.25),
+          labels = c("A.", "B."))
+
+save_plot("substrate.png", substrate, nrow = 1, ncol = 2, base_aspect_ratio = 1.5)
+```
+
+# getting numbers
+## adven root
+```{r getting mins and maxs uplands}
+upland <- adven_root[adven_root$SITE == "DALTON",]
+
+summary(upland$DEPTH[upland$TREAT == 1])
+
+summary(upland$DEPTH[upland$TREAT == 2])
+24/10
+```
+
+```{r getting mins and maxs lowland}
+lowland <- adven_root[adven_root$SITE == "STEESE",]
+
+summary(lowland$DEPTH[lowland$TREAT == 1])
+low1 <- lowland$DEPTH[lowland$TREAT == 1]
+low2 <- lowland$DEPTH[lowland$TREAT == 2]
+t.test(low1,low2)
+```
+
+```{r anova / kruskal}
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+
+adven_root %>%
+  group_by(SITE) %>%
+  shapiro_test(DEPTH)
+
+adven_root_stee <- adven_root[adven_root$SITE == "STEESE",]
+adven_root_stee %>%
+       dunn_test(DEPTH ~ TREAT, p.adjust.method = "bonferroni")
+```
+
+## organic layer
+
+```{r getting maximums and minimums}
+summary(org_depth$ORG_DEPTH[org_depth$TREATMENT == 0])
+
+# UPLANDS
+upland <- org_depth[org_depth$SITE == "DALTON",]
+summary(upland$ORG_DEPTH[upland$TREATMENT == 0])
+sd(upland$ORG_DEPTH[upland$TREATMENT == 0])
+
+summary(upland$ORG_DEPTH[upland$TREATMENT == 1])
+sd(upland$ORG_DEPTH[upland$TREATMENT == 1])
+
+summary(upland$ORG_DEPTH[upland$TREATMENT == 2])
+sd(upland$ORG_DEPTH[upland$TREATMENT == 2])
+
+summary(upland$ORG_DEPTH[upland$TREATMENT == 3])
+sd(upland$ORG_DEPTH[upland$TREATMENT == 3])
+
+# LOWLANDS
+lowland <- org_depth[org_depth$SITE == "STEESE",]
+summary(lowland$ORG_DEPTH[lowland$TREATMENT == 0])
+sd(lowland$ORG_DEPTH[lowland$TREATMENT == 0])
+
+summary(lowland$ORG_DEPTH[lowland$TREATMENT == 1])
+sd(lowland$ORG_DEPTH[lowland$TREATMENT == 1])
+
+summary(lowland$ORG_DEPTH[lowland$TREATMENT == 2])
+sd(lowland$ORG_DEPTH[lowland$TREATMENT == 2])
+
+summary(lowland$ORG_DEPTH[lowland$TREATMENT == 3])
+sd(lowland$ORG_DEPTH[lowland$TREATMENT == 3])
+
+
+# factors
+mean(lowland$ORG_DEPTH[lowland$TREATMENT == 1]) / mean(upland$ORG_DEPTH[upland$TREATMENT == 1]) # 1.889
+
+mean(lowland$ORG_DEPTH[lowland$TREATMENT == 2]) / mean(upland$ORG_DEPTH[upland$TREATMENT == 2]) # 3.169
+
+mean(lowland$ORG_DEPTH[lowland$TREATMENT == 3]) / mean(upland$ORG_DEPTH[upland$TREATMENT == 3]) # 1.57
+
+mean(upland$ORG_DEPTH[upland$TREATMENT == 00]) / mean(upland$ORG_DEPTH[upland$TREATMENT == 1])
+mean(lowland$ORG_DEPTH[lowland$TREATMENT == 00]) / mean(lowland$ORG_DEPTH[lowland$TREATMENT == 1])
+
+t.test(upland$ORG_DEPTH[upland$TREATMENT == 3], lowland$ORG_DEPTH[lowland$TREATMENT == 3])
+```
+
+```{r graph for defense}
+ org <- ggplot(org_depth, 
+                          aes(x = factor(TREATMENT), y = ORG_DEPTH, 
+                              fill = SITE)) + 
+    geom_boxplot()   + 
+    scale_fill_manual(name = "Site Type",
+                      values = c("#d95f0e", "#fec44f"), 
+                      labels = c("Upland", "Lowland")) + 
+    labs(title = "Organic Layer Depth", 
+         x = "Number of Fires", y = "Organic layer depth (cm)") + 
+    theme(plot.title = element_text(hjust = 0), legend.position =  "none") 
+org
+expose <- ggplot(exposed_min, 
+                          aes(x = factor(TREATMENT),
+                              y = MINERAL,
+                              fill = SITE)) + 
+    geom_boxplot() + 
+    scale_fill_manual(name = "Site Type",
+                      values = c("#d95f0e", "#fec44f"), 
+                      labels = c("Upland", "Lowland")) + 
+    labs(title = "Exposed Mineral Soil", 
+         x = "Number of Fires", y = "% of Mineral Soil Exposed") + 
+    theme(plot.title = element_text(hjust = 0))
+expose
+grid <- plot_grid(org, expose,
+          nrow = 1, ncol = 2,
+          rel_widths = c(1,1.25))
+grid
+save_plot("grid.png", grid, nrow = 1, ncol = 2)
+```
+
+
+
+
+

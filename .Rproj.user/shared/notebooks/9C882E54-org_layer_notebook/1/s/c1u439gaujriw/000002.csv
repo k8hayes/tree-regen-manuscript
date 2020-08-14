@@ -1,0 +1,16 @@
+"0","```r
+```r
+adven_root <- read.csv(\data/adventaguous_roots.csv\)
+adven_root_plot <- ggplot(adven_root, 
+                          aes(x = factor(adven_root$TREAT),
+                              y = adven_root$DEPTH, 
+                              fill = adven_root$SITE)) + 
+  geom_boxplot() + 
+  labs(x = \Number of Fires\, y = \Depth (cm)\,
+       title = \Depth of Substrate Consumption\) + 
+  scale_fill_manual(values = c(\#d9d9d9\, \#ffffff\), name = \Site Type\, labels = c(\Upland\, \Lowland\)) + 
+  theme(plot.title = element_text(hjust = 0),
+        legend.position = \none\) + xlim(\1\, \2\)
+adven_root_plot
+```
+```"

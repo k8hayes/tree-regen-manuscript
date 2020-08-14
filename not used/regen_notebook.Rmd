@@ -1,0 +1,618 @@
+---
+title: "regen_notebook"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ggplot2)
+library(cowplot)
+ theme_set(theme_cowplot())
+library(dplyr)
+library(tidyr)
+library(here)
+
+
+```
+
+## Regeneration workflow
+
+6/30 - Doing a similar thing that I did with DBH - I want to streamline how I've been working with/on the regeneration data, and having half a dozen r scripts wasn't really cutting it. 
+
+7/15 - Been reading more, and I think I want to change my terminology: primary and secondary aren't that intuitive, and neither is incoming / established. From here on out, I think I'll just use seedlings and stems. I also think I'll use stem per square meter, given that those units are used in Johnstone et al. 2004 and Kurkowski et al. 2008. 
+
+7/15 - Turns out I need to do a bit more background work before I can move forward - both Dalton and Steese regen are a bit all over the place: missing species, incorrect acronyms, etc. I can group them by hand, but I'm going to shortcut a bit of the work with species, etc. 
+
+```{r prepping seedling regen for both sites} 
+# Steese
+  steeseRegen <- read.csv("data/Steese_regen.csv", stringsAsFactors = FALSE)
+  colnames(steeseRegen) <- c("SITE","SITECODE", "SITENUM", "TREAT", "DIVISION", "SPP", "BROW_COUNT", "UNBROW_COUNT", "QUAD")
+  # changing species names
+  unique(steeseRegen$SPP)
+  steeseRegen$SPP[which(steeseRegen$SPP == "ALCER")] <- "ALCR"
+  steeseRegen$SPP[which(steeseRegen$SPP == "ASPEN")] <- "POTR"
+  steeseRegen$TOTAL_COUNT <- steeseRegen$UNBROW_COUNT + steeseRegen$BROW_COUNT
+  # exporting out
+  write.csv(steeseRegen, "data/Steese_regen.csv", row.names = FALSE)
+
+# dalton
+daltonRegen <- read.csv("data/Dalton_Regen.csv", stringsAsFactors = FALSE)
+colnames(daltonRegen) <- c("SITE","SITECODE", "SITENUM", "TREAT", "DIVISION", "SPP", "BROW_COUNT", "UNBROW_COUNT", "TOTAL_COUNT", "QUAD")
+
+unique(daltonRegen$SPP)
+daltonRegen$SPP[which(daltonRegen$SPP == "ALVI")] <- "ALCR"
+daltonRegen$SPP[which(daltonRegen$SPP == "SA_5")] <- "SALIX"
+daltonRegen$SPP[which(daltonRegen$SPP == "SAGL")] <- "SALIX"
+daltonRegen$SPP[which(daltonRegen$SPP == "SAGL")] <- "SALIX"
+daltonRegen$SPP[which(daltonRegen$SPP == "ARTCO")] <- "ARCTO"
+write.csv(daltonRegen, "data/Dalton_Regen.csv", row.names = FALSE)
+```
+
+7/16 -Spent the last two days fixing files - the quadrants were wrong on some (many), and now each site has all potential species (ALCR, ARCTO, BENE, PIGL, PIME, POBA, POTR, SALIX), with the appropriate zero counts. I also added browsing indexes according to species and site. The site ones might be especially helpful - I might note which sites have no browse at all as an FYI for sampling this year. Finally - I tallied the total stem count per site. Now I can do stem per meter 2, and also the proportion of each species (per Johnstone et al. 2004). That'll be especially useful since the total stem counts are wildly different, especially in the dalton. 
+
+```{r merging seedling regen } 
+# steeseRegen <- read.csv("data/Steese_Regen.csv", strip.white = TRUE, stringsAsFactors = FALSE)
+# daltonRegen <- read.csv("data/Dalton_Regen.csv", strip.white = TRUE, stringsAsFactors = FALSE)
+# colnames(steeseRegen)
+# seedRegen <- rbind(steeseRegen, daltonRegen)
+# write.csv(seedRegen, "data/seedlingRegen.csv", row.names = FALSE)
+```
+
+```{r loading in seedling regen} 
+# seedling regeneration
+seedRegen <- read.csv("data/seedlingRegen.csv", stringsAsFactors = FALSE)
+
+#some cleanup on seedlings
+colnames(seedRegen) <- c("SITE", "SITECODE", "SITENUM", "TREAT", "DIVISION", "SPP", "BROW_COUNT", "UNBROW_COUNT", "SPP_TOTAL_COUNT", "QUAD", "SPP_BROWS_INDEX", "SITE_BROWSE_INDEX", "SITE_TOTAL_COUNT")
+  
+# grouping salix
+  unique(seedRegen$SPP)
+  seedRegen$SPP[which(seedRegen$SPP == "SA_5")] <- "SALIX"
+  seedRegen$SPP[which(seedRegen$SPP == "SAGL")] <- "SALIX"
+  seedRegen$SPP[which(seedRegen$SPP == "SAGL")] <- "SALIX"
+#  getting rid of weird typo
+  seedRegen$SPP[which(seedRegen$SPP == "ALVI")] <- "ALCR"
+
+# getting rid of TLS
+  unique(seedRegen$SITECODE)
+  seedRegen$SITECODE[seedRegen$SITECODE == "10_0_TLS"] <- "10_0"
+  seedRegen$SITECODE[seedRegen$SITECODE == "12_1_TLS"] <- "12_1"
+  seedRegen$SITECODE[seedRegen$SITECODE == "65_1_TLS"] <- "65_1"
+  seedRegen$SITECODE[seedRegen$SITECODE == "50_1_TLS"] <- "50_1"
+  seedRegen$SITECODE[seedRegen$SITECODE == "64_1_TLS"] <- "64_1"  
+
+# scaling up quadrants
+  #seedRegen$BROW_COUNT <- seedRegen$BROW_COUNT*2
+  #seedRegen$UNBROW_COUNT <- seedRegen$UNBROW_COUNT*2
+  #seedRegen$TOTAL_COUNT <- seedRegen$TOTAL_COUNT*2
+  #seedRegen$QUAD <- 2
+  # ACTUALLY, going to stick to 1 quadrant each - should be easier to get to stems per meter
+  
+# rough browsing index # DONE
+  #seedRegen$BROWS_INDEX <- seedRegen$BROW_COUNT / seedRegen$TOTAL_COUNT
+  #seedRegen$BROWS_INDEX[is.na(seedRegen$BROWS_INDEX)] <- 0
+  #seedRegen$BROWS_INDEX[seedRegen$SITECODE == "39_2"] <- "NA"
+  #seedRegen$BROWS_INDEX[seedRegen$SITECODE == "32_2"] <- "NA"
+  
+  # changing Dalton and Steese labels to upland and lowland
+  #seedRegen$SITE[seedRegen$SITE == "DALTON"] <- "Upland"
+  #seedRegen$SITE[seedRegen$SITE == "STEESE"] <- "Lowland"
+  #seedRegen <- seedRegen %>% arrange(desc(seedRegen$SITE)) # sorts upland and lowland back into the order i want
+  #write.csv(seedRegen, "data/seedlingRegen.csv", row.names = FALSE)
+  
+```
+
+Now I can create the values I want for the final graph - the proportion of seedlings per site, and the stems per meter. 
+```{r creating proportion of seedlings per site}
+#detach(package:cowplot) 
+#detach(package:ggplot2)
+seedRegen <- read.csv("data/seedlingRegen.csv")
+
+# this counts up the total number of seedlings at each site
+#countSeed <- seedRegen %>% 
+ # group_by(seedRegen$SITE,seedRegen$TREAT, seedRegen$SITECODE) %>% 
+  #summarise(CountSum = sum(TOTAL_COUNT))  # this is the total number of seedlings at each site
+
+# now I need to figure out how to divide each species count by the total number per site
+# 7/16 - actually, I did this in R already
+
+# so, now what i just need is this:
+seedRegen$SPP_PROPORTION <- seedRegen$SPP_TOTAL_COUNT / seedRegen$SITE_TOTAL_COUNT
+
+write.csv(seedRegen, "data/seedlingRegen.csv", row.names = FALSE)
+```
+
+```{r calculating seedlings per square meter}
+seedRegen$SITE_SEED_M2 <- seedRegen$SITE_TOTAL_COUNT / 100
+
+seedRegen$SPP_SEED_M2 <- seedRegen$SPP_TOTAL_COUNT / 100
+
+write.csv(seedRegen, "data/seedlingRegen.csv", row.names = FALSE)
+```
+
+```{r new starting point for seedlings}
+seedRegen <- read.csv(here("data/seedlingRegen.csv"))
+rm(steeseRegen, daltonRegen)
+
+# mean proportion of each species
+meanSeed <- seedRegen %>% 
+ group_by(seedRegen$TREAT, seedRegen$SITE, seedRegen$SPP) %>% 
+ summarise(mean_proportion = mean(SPP_PROPORTION), SD = sd(SPP_PROPORTION))  %>%
+  complete(seedRegen$SPP, fill = list(mean_proportion = 0, SD = 0))
+meanSeed <- as.data.frame(meanSeed)
+colnames(meanSeed) <- c( "TREAT", "SITE", "SPP", "MEAN_PROP", "SD")
+```
+9/1 - Adding in Steese controls
+
+```{r steese controls}   
+steese_control <- read.csv("data/steese_seed_control.csv")
+colnames(steese_control)
+
+controlSeed <- steese_control %>% 
+  group_by(steese_control$SITE, steese_control$TREAT, steese_control$SITECODE, steese_control$SPP) %>% 
+  summarise(n = n())%>%
+  complete(steese_control$SPP,
+             fill = list(n = 0))
+colnames(controlSeed) <- c("SITE", "TREAT", "SITECODE", "SPP", "STEM_COUNT")
+# scaling up from 9 m2 to 100 m2
+controlSeed$STEM_COUNT <- controlSeed$STEM_COUNT*(11)
+
+colnames(seedRegen) <- c("SITE", "SITECODE", "SITENUM", "TREAT", "DIVISION", "SPP", "BROW_COUNT", "UNBROW_COUNT", "SPP_TOTAL_COUNT", "QUAD", "SPP_BROWS_INDEX", "SITE_BROWSE_INDEX", "SITE_TOTAL_COUNT")
+```
+
+```{r getting specific seedling values}  
+meanSeedpercent <- meanSeed
+meanSeedpercent$MEAN_PROP <- (meanSeedpercent$MEAN_PROP*100)
+meanSeedpercent$SD <- (meanSeedpercent$SD * 100)
+```
+
+```{r seedling plots (proportion and density)}
+seedRegen <- read.csv("data/seedlingRegen.csv") # double check
+write.csv(meanSeed, "meanSeed.csv", row.names = FALSE)
+meanSeed <- read.csv("meanSeed.csv")
+require(cowplot)
+
+# GRAPHING PROPORTION OF SPECIES
+# removing some of the species... # POBA
+meanSeed <- meanSeed[meanSeed$SPP != "ARCTO",]
+meanSeed <- meanSeed[meanSeed$SPP != "POBA",]
+meanSeed <- meanSeed[meanSeed$SPP != "PIGL",]
+meanSeed <- meanSeed[meanSeed$SPP != "ALCR",]
+
+seed_prop_plot <- ggplot(meanSeed, 
+                         aes(x = as.factor(meanSeed$TREAT), y = meanSeed$MEAN_PROP, 
+                     color = meanSeed$SPP, group = meanSeed$SPP)) +
+  facet_wrap(meanSeed$SITE) + 
+  geom_line(linetype = "dashed") + geom_point(aes(shape = meanSeed$SPP)) + 
+        labs(x = "Number of Fires", y = "Mean proportion of species", 
+             title = "Regeneration below DBH") + 
+        scale_color_manual(values = c( "#FFC300", "#3E4DE1", "#7ECA72", "#C70039"),
+          name = "Species", labels = c( "Birch", "Black Spruce", "Aspen", "Willow")) +
+        scale_shape_manual(values = c(16,17,18,19), 
+                           name = "Species", 
+                           labels = c("Birch", "Black Spruce", "Aspen", "Willow")) +
+      theme_cowplot(12) +
+      theme( plot.title = element_text(hjust = 0)) + 
+  geom_errorbar(aes(ymin = meanSeed$MEAN_PROP - SD, ymax = meanSeed$MEAN_PROP + SD), 
+                               width = .5, position = position_dodge(0.15)) 
+seed_prop_plot <- seed_prop_plot + theme(axis.title.y = element_blank(), 
+                       axis.ticks.y = element_blank())
+save_plot("seedling_proportion.png", seed_prop_plot, base_aspect_ratio = 1.5)
+```
+
+``` {r adding species divisions # } 
+# stem regeneration
+#stemRegen <- read.csv("data/stemRegen.csv", stringsAsFactors = FALSE)
+
+#secondRegen$DIVISON[secondRegen$SPP == "PIME"] <- "c"
+#secondRegen$DIVISON[secondRegen$SPP == "PIME"] <- "c"
+#secondRegen$DIVISON[secondRegen$SPP == "BENE"] <- "d"
+#secondRegen$DIVISON[secondRegen$SPP== "ALCR"] <- "d"
+#secondRegen$DIVISON[secondRegen$SPP == "SALIX"] <- "d"
+#secondRegen$DIVISON[secondRegen$SPP == "ARCTO"] <- "d"
+#secondRegen$DIVISON[secondRegen$SPP == "POTR"] <- "d"
+#secondRegen$DIVISON[secondRegen$SPP == "POBA"] <- "d"
+
+# changing Dalton and Steese labels to upland and lowland
+  #stemRegen$SITE[stemRegen$SITE == "DALTON"] <- "Upland"
+  #stemRegen$SITE[stemRegen$SITE == "STEESE"] <- "Lowland"
+  #seedRegen <- seedRegen %>% arrange(desc(seedRegen$SITE)) # sorts upland and lowland back into the order i want
+
+#write.csv(stemRegen, "data/stemRegen.csv", row.names = FALSE)
+```
+
+```{r proportions of stem regeneration} 
+stemRegen <- read.csv(here("data/stemRegen_wControl.csv"))
+
+# counting up the total number of stems in each plot
+# stem_count <- stemRegen %>%
+  #group_by(stemRegen$SITE, stemRegen$SITECODE) %>%
+  #summarise(total_stems <- sum(STEM_COUNT))
+
+# now, have to go back in and enter manually:
+#stemRegen <- read.csv("data/stemRegen.csv")
+#colnames(stemRegen) <- c("SITE", "TREAT", "SITECODE", "SPP", "SPP_TOTAL_COUNT", "DBH_SUM", "CAN_AV", "BROW_INDEX_AV", "SITE_TOTAL_COUNT")
+#stemRegen$SPP_PROP <- stemRegen$SPP_TOTAL_COUNT / stemRegen$SITE_TOTAL_COUNT
+#write.csv(stemRegen, "data/stemRegen.csv", row.names = FALSE)
+#rm(stem_count)
+
+# getting mean proportion of each species per treatment
+meanStem <- stemRegen %>% 
+ group_by(stemRegen$TREAT, stemRegen$SITE, stemRegen$SPP) %>% 
+ summarise(MEAP_PROP = mean(SPP_PROP), SD = sd(SPP_PROP))  %>%
+  complete(stemRegen$SPP, fill = list(MEAN_PROP = 0, SD = 0))
+meanStem <- as.data.frame(meanStem)
+colnames(meanStem) <- c( "TREAT", "SITE", "SPP", "MEAN_PROP", "SD")
+
+# removing POBA and ARCTO
+meanStem <- meanStem[meanStem$SPP != "POBA",]
+meanStem <- meanStem[meanStem$SPP != "ARCTO",]
+meanStem <- meanStem[meanStem$SPP != "ALCR",]
+meanStem <- meanStem[meanStem$SPP != "PIGL",]
+```
+### checking numbers
+
+```{r checking stem numbers}
+meanStem2 <- meanStem
+meanStem2$MEAN_PROP <- (meanStem2$MEAN_PROP * 100)
+meanStem2$SD <- (meanStem2$SD*100)
+```
+
+
+
+```{r graphing stem }
+require(cowplot)
+ggplot(meanStem, 
+                         aes(x = as.factor(meanStem$TREAT), 
+                             y = meanStem$MEAN_PROP, color =
+                               meanStem$SPP,
+                             group = meanStem$SPP))+
+  facet_wrap(meanStem$SITE) + 
+  geom_line() + geom_point(aes(shape = meanStem$SPP))  + 
+        labs(x = "Number of Fires", y = "Mean proportion of species", 
+             title = "Regeneration above DBH") + 
+        scale_shape_manual(values = c(16,17,18,19), 
+                           name = "Species", 
+                           labels = c( "Birch", "Black Spruce", "Aspen", "Willow")) +
+        scale_color_manual(values = c( "#FFC300", "#3E4DE1", "#7ECA72", "#C70039"),
+          name = "Species", labels = c( "Birch", "Black Spruce", "Aspen", "Willow")) + 
+      theme( plot.title = element_text(hjust = 0)) + 
+  theme_cowplot(12) +
+  geom_errorbar(aes(ymin = meanStem$MEAN_PROP - SD, ymax = meanStem$MEAN_PROP + SD), 
+                               width = .5, position = position_dodge(0.15)) 
+save_plot("stem_proportion.png", stem_prop_plot, base_aspect_ratio = 1.5)
+```
+
+# New idea - merge stem and seed plots
+```{r}
+meanStem$TYPE <- "STEM"
+meanSeed$TYPE <- "SEED"
+meanStemSeed <- rbind(meanStem, meanSeed)
+
+ggplot(meanStemSeed, aes(x = as.factor(meanStemSeed$TREAT),
+                         y = meanStemSeed$MEAN_PROP,
+                         group = meanStemSeed$TYPE))+ 
+      facet_wrap(meanStemSeed$SITE) + 
+      geom_line() + geom_point(aes(shape = meanStemSeed$SPP)) + 
+        background_grid() + panel_border() + 
+        labs(x = "Number of Fires", y = "Mean proportion of species", 
+             title = "Canopy Dominance by Species") + 
+        scale_shape_manual(values = c(15,16,17,18,19), 
+                           name = "Species", labels = c("Alder", "Birch", "Black Spruce", "Aspen", "Willow")) +
+        scale_color_manual(values = c("#FF5733", "#FFC300", "#3E4DE1", "#7ECA72", "#C70039"),
+          name = "Species", labels = c("Alder", "Birch", "Black Spruce", "Aspen", "Willow"))  +
+      theme( plot.title = element_text(hjust = 0))
+
+```
+
+7/25 - Working on density data today - thinking I'll break down to species level - maybe facet wrap so there's one graph for each species? Then there'll be two box plots (dalton and steese)
+
+```{r density of stem regeneration}
+stemRegen <- read.csv("data/stemRegen_wControl.csv")
+# estimating density of trees in each plot
+density <- stemRegen %>%
+  group_by(stemRegen$SITE, stemRegen$TREAT, stemRegen$SITECODE, stemRegen$SPP) %>% # adding in species
+  summarise(n = sum(SPP_TOTAL_COUNT))
+colnames(density) <- c("SITE", "TREAT", "SITECODE", "SPP", "TOTAL_STEM")
+density$STEM_PER_METER <- density$TOTAL_STEM / 200
+
+
+# Remove arcto and poba
+density <- density[density$SPP != "POBA",]
+density <- density[density$SPP != "ARCTO",]
+
+# adding c and d
+density$DIV <- density$DIV[density$SPP == "PIME"] <- "c"
+density$DIV[density$SPP == "BENE"] <- "d"
+density$DIV[density$SPP == "ALCR"] <- "d"
+density$DIV[density$SPP == "POTR"] <- "d"
+density$DIV[density$SPP == "SALIX"] <- "d"
+
+# create new plot for alcr and potr
+dens_alcr <- density[density$SPP == "ALCR",]
+dens_potr <- density[density$SPP == "POTR",]
+dens_alcr_potr <- rbind(dens_alcr, dens_potr)
+
+ggplot(dens_alcr_potr, aes(x = as.factor(dens_alcr_potr$TREAT), y = dens_alcr_potr$STEM_PER_METER, 
+                    fill = dens_alcr_potr$SITE)) + panel_border() + background_grid() +
+  geom_boxplot() + theme( plot.title = element_text(hjust = 0)) +
+  scale_fill_manual(values = c("grey", "white"), name = "Site") + 
+  labs(x = "Number of Fires", y = "Stems per Meter", title = "Tree Density") + facet_wrap(dens_alcr_potr$SPP)
+
+library(ggplot2)
+library(cowplot)
+densityplot <- ggplot(density, aes(x = as.factor(density$TREAT), y = density$STEM_PER_METER, fill = density$DIV)) + panel_border() + background_grid() + facet_wrap(density$SITE) + 
+  geom_boxplot() + theme( plot.title = element_text(hjust = 0)) +
+  scale_fill_manual(values = c("#2c7fb8", "#edf8b1"), name = "Division",
+                    labels = c("Conifer", "Deciduous")) + 
+  labs(x = "Number of Fires", y = "Stems per Meter", title = "Tree Density") 
+densityplot
+save_plot("density.png", densityplot, base_aspect_ratio = 1.5)
+densityplot + facet_wrap(density$SPP) + ylim(0, 1.25)
+```
+
+# t-tests between stem counts
+9/2 - I have an idea i want to try: might go back to boxplots of log-transformed stem counts, but now with anova results between them. Starting with spruce first - we'll see how that goes
+
+```{r} 
+#pime <- seedRegen[seedRegen$SPP == "PIME",]
+ #ggplot(pime, aes(x = factor(pime$TREAT), y = log(pime$SPP_TOTAL_COUNT))) + 
+  #geom_boxplot(aes(fill = pime$SITE)) + 
+  #labs(x = "Number of Fires", y = "Log-Transformed Stem count per Ha", title = "Black Spruce Seedlings") + 
+  #scale_fill_manual(values = c( "#d95f0e", "#fec44f"), name = "Site type",  labels = c("Upland", "Lowland")) + 
+  #theme(legend.position = "none", plot.title = element_text(hjust = 0)) 
+
+ #pime.aov <- aov(pime$SPP_TOTAL_COUNT ~ factor(pime$TREAT), data = pime)
+ #summary(pime.aov)
+ #TukeyHSD(pime.aov)
+ 
+#pimeST <- pime[pime$SITE == "Lowland",]
+#pimeST.aov <- aov(log(pimeST$SPP_TOTAL_COUNT) ~ factor(pimeST$TREAT), data = pimeST)
+#summary(pimeST.aov) 
+#TukeyHSD(pimeST.aov) 
+
+#pimeSTplot <- ggplot(pimeST, aes(x = factor(pimeST$TREAT), y = log(pimeST$SPP_TOTAL_COUNT))) + geom_boxplot() + 
+  #labs(x = "Number of Fires", y = "Log-Transformed Stem count per Ha", title = " Lowland Black Spruce Seedlings") +
+  #theme( plot.title = element_text(hjust = 0)) + coord_cartesian(ylim = c(2,9))
+#save_plot("pimeSTseed.png", pimeSTplot, base_aspect_ratio = 1.5)
+
+#pimeDL <- pime[pime$SITE == "Upland",]
+#pimeDL.aov <- aov(log(pimeDL$SPP_TOTAL_COUNT) ~ factor(pimeDL$TREAT), data = pimeDL)
+#summary(pimeDL.aov)
+#TukeyHSD(pimeDL.aov)
+
+#pimeDLplot <- ggplot(pimeST, aes(x = factor(pimeST$TREAT), y = log(pimeST$SPP_TOTAL_COUNT))) + geom_boxplot() + 
+ # labs(x = "Number of Fires", y = "Log-Transformed Stem count per Ha", title = "Upland Black Spruce Seedlings") +
+  #theme( plot.title = element_text(hjust = 0))
+#pimeDLplot
+#save_plot("pimeDLseed.png", pimeDLplot, base_aspect = 1.5)
+
+# graphing both seed and stems of spruce together
+pime_seed <- seedRegen[seedRegen$SPP == "PIME",]
+pime_stem <- stemRegen[stemRegen$SPP == "PIME",]
+
+# need to get rid of columns
+colnames(pime_seed)
+#pime_seed <- pime_seed[1:14]
+#pime_seed <- pime_seed[-7]
+#pime_seed <- pime_seed[-5]
+#pime_seed <- pime_seed[-3]
+#pime_seed <- pime_seed[1:5]
+
+colnames(pime_stem)
+#pime_stem <- pime_stem[1:5]
+
+pime <- rbind(pime_seed, pime_stem)
+
+pime_plot <- ggplot(pime, aes(x = factor(pime$TREAT), y = log(pime$SPP_TOTAL_COUNT))) + 
+  geom_boxplot(aes(fill = pime$SITE))  + 
+  labs(x = "Number of Fires", y = "Log-Transformed Stem count per Ha", title = "Black Spruce Abundance") + 
+  scale_fill_manual(values = c("#bdbdbd", "#f0f0f0"), name = "Site type",  labels = c("Upland", "Lowland")) + 
+  theme( plot.title = element_text(hjust = 0))
+save_plot("pime_abundance.png", pime_plot, base_aspect_ratio = 1.5)
+```
+
+Doing the same now with stems:
+```{r}
+pime <- stemRegen[stemRegen$SPP == "PIME",]
+
+pimeST <- pime[pime$SITE == "Lowland",]
+pimeSTplot <- ggplot(pimeST, aes(x = factor(pimeST$TREAT), y = log(pimeST$SPP_TOTAL_COUNT))) + geom_boxplot() + 
+  labs(x = "Number of Fires", y = "Log-Transformed Stem count per Ha", title = " Lowland Black Spruce Stems") +
+  theme( plot.title = element_text(hjust = 0)) + coord_cartesian(ylim = c(2,9))
+save_plot("pimeSTstem.png", pimeSTplot, base_aspect_ratio = 1.5)
+
+pimeST.aov <- aov(pimeST$SPP_TOTAL_COUNT ~ factor(pimeST$TREAT), data = pimeST)
+summary(pimeST.aov)
+TukeyHSD(pimeST.aov)
+
+pimeDL <- pime[pime$SITE == "Upland",]
+pimeDL.aov <- aov(pimeDL$SPP_TOTAL_COUNT ~ factor(pimeDL$TREAT), data = pimeDL)
+summary(pimeDL.aov)
+TukeyHSD(pimeDL.aov)
+
+pimeDLplot <- ggplot(pimeDL, aes(x = factor(pimeDL$TREAT), y = log(pimeDL$SPP_TOTAL_COUNT))) + geom_boxplot() + 
+  labs(x = "Number of Fires", y = "Log-Transformed Stem count per Ha", title = "Upland Black Spruce Stems") +
+  theme( plot.title = element_text(hjust = 0)) + coord_cartesian(ylim = c(2,9))
+save_plot("pimeDLstem.png", pimeDLplot, base_aspect = 1.5)
+
+```
+
+# Compiling densities and standard deviations for table
+9/11 - creating a table to go in the results section with the following columns:Setting, treatment, species, seedling/stem density, seedling/stem standard deviation
+
+```{r compiling means and standard deviations for seedlings}
+seed_table <- seedRegen %>% 
+ group_by(seedRegen$TREAT, seedRegen$SITE,seedRegen$SPP) %>% 
+ summarise(MEAN_SM2 = mean(SPP_SEED_M2), SD = sd(SPP_SEED_M2)) %>%
+  complete(seedRegen$SPP, fill = list(MEAN_PROP = 0, SD = 0))
+colnames(seed_table) <- c("TREAT", "SITE", "SPP", "MEAN_SM2", "SD")
+
+seed_table <- seed_table[seed_table$SPP != "ARCTO",]
+seed_table <- seed_table[seed_table$SPP != "POBA",]
+seed_table <- seed_table[seed_table$SPP != "PIGL",]
+seed_table <- seed_table[seed_table$SPP != "ALCR",]
+write.csv(seed_table, "seed_table.csv", row.names = FALSE)
+```
+
+```{r compiling means and standard deviations for stems}
+stemRegen$SPP_SM2 <- stemRegen$SPP_TOTAL_COUNT / 200
+
+stem_table <- stemRegen %>% 
+ group_by(stemRegen$TREAT, stemRegen$SITE, stemRegen$SPP) %>% 
+ summarise(MEAN_SM2 = mean(SPP_SM2), SD = sd(SPP_SM2)) %>%
+  complete(stemRegen$SPP, fill = list(MEAN_PROP = 0, SD = 0))
+colnames(stem_table) <- c("TREAT", "SITE", "SPP", "MEAN_SM2", "SD")
+
+stem_table <- stem_table[stem_table$SPP != "ALCR",]
+stem_table <- stem_table[stem_table$SPP != "ARCTO",]
+stem_table <- stem_table[stem_table$SPP != "PIGL",]
+stem_table <- stem_table[stem_table$SPP != "POBA",]
+write.csv(stem_table, "stem_table.csv", row.names = FALSE)
+
+```
+
+# running t tests on group means
+## uplands
+```{r lowland stem regen t test}
+lowSR <- stemRegen[stemRegen$SITE == "Lowland",]
+
+lowSR_pime <- lowSR[lowSR$SPP == "PIME",]
+t.test(lowSR_pime$SPP_PROP[lowSR_pime$TREAT == 0],lowSR_pime$SPP_PROP[lowSR_pime$TREAT == 1] )
+mean(lowSR_pime$SPP_PROP[])
+
+lowSR_bene <- lowSR[lowSR$SPP == "BENE",]
+t.test(lowSR_bene$SPP_PROP[lowSR_bene$TREAT == 2], lowSR_bene$SPP_PROP[lowSR_bene$TREAT == 3])
+mean(lowSR_bene$SPP_PROP[lowSR_bene$TREAT == 2]) / mean(lowSR_bene$SPP_PROP[lowSR_bene$TREAT == 3])
+```
+
+```{r upland stem regen t test}
+upSR <- stemRegen[stemRegen$SITE == "Upland",]
+
+upSR_pime <- upSR[upSR$SPP == "PIME",]
+t.test(upSR_pime$SPP_PROP[upSR_pime$TREAT == 0],upSR_pime$SPP_PROP[upSR_pime$TREAT == 1] )
+
+```
+## lowlands
+```{r}
+lowST <- seedRegen[seedRegen$SITE == "Lowland",]
+
+lowST_pime <- lowST[lowST$SPP == "PIME",]
+t.test(lowST_pime$SPP_PROP[lowST_pime$TREAT == 0],lowST_pime$SPP_PROP[lowST_pime$TREAT == 1] )
+
+
+lowST_bene <- lowST[lowST$SPP == "BENE",]
+t.test(lowST_bene$SPP_PROP[lowST_bene$TREAT == 2], lowST_bene$SPP_PROP[lowST_bene$TREAT == 3])
+mean(lowST_bene$SPP_PROP[lowST_bene$TREAT == 2]) / mean(lowST_bene$SPP_PROP[lowST_bene$TREAT == 3])
+```
+
+
+
+
+# Combining Seedling and overstory
+10/25 - Talked to Brian today about the first regen paper, and I think it makes sense to combine seedlings and overstory into an overall graph of regeneration. 
+
+```{r combining seeds and stems}
+seedRegen <- read.csv("data/seedlingRegen.csv")
+stemRegen <- read.csv("data/stemRegen_wControl.csv")
+
+stemRegen$SITE_TOTAL_COUNT[stemRegen$SITECODE == "1_0"] <- 308
+
+# have to get rid of PIGL from seedlings
+# seedRegen <- seedRegen[seedRegen$SPP != "PIGL",]
+
+# adding in tag so that I can differentiate between the two later
+seedRegen$REGEN_TYPE <- "SEED"
+stemRegen$REGEN_TYPE <- "STEM"
+
+# removing extra columns
+seedRegen <- seedRegen[-3] # removes sitenum
+
+colnames(seedRegen)
+colnames(stemRegen)
+
+test <- merge(seedRegen, stemRegen, by = c("SITE", "SITECODE", "TREAT", "SPP"))
+
+test$SITE_TOTAL_COUNT <- test$SITE_TOTAL_COUNT.x + test$SITE_TOTAL_COUNT.y
+
+colnames(test)
+
+test <- test[-c(6:7)] # brow_count # unbrow_count
+test <- test[-c(7:9)] # quad # spp_brow_index # site_brow_index
+test <- test[-c(13:15)] # dbh sum # can_av # brow_index_av
+test <- test[-8] # spp_proportion
+test <- test[-13] #spp_prop
+test <- test[-c(7,12)] #site_total_count x and y
+test <- test[-c(7,8)]
+
+colnames(test)
+colnames(test) <- c("SITE", "SITECODE", "TREAT", "SPP", "DIVISON", "SEED_TOT", "SEED", "STEM_TOT", "STEM", "SITE_TOT_COUNT")
+
+test$SPP_TOTAL <- test$STEM_TOT + test$SEED_TOT
+test$SPP_PROP <- test$SPP_TOTAL / test$SITE_TOT_COUNT
+
+colnames(test)
+test <- test[-c(5:9)]
+
+regen <- test
+write.csv(regen, "data/regen.csv", row.names = FALSE)
+```
+
+```{r}
+regen <- read.csv("data/regen.csv")
+colnames(regen)
+
+meanRegen <- regen %>% 
+ group_by(regen$TREAT, regen$SITE, regen$SPP) %>% 
+ summarise(MEAP_PROP = mean(SPP_PROP), SD = sd(SPP_PROP))  %>%
+  complete(regen$SPP, fill = list(MEAN_PROP = 0, SD = 0))
+meanRegen <- as.data.frame(meanRegen)
+colnames(meanRegen) <- c( "TREAT", "SITE", "SPP", "MEAN_PROP", "SD")
+
+totalMeanRegen <- regen %>% 
+ group_by(regen$TREAT, regen$SPP) %>% 
+ summarise(MEAP_PROP = mean(SPP_PROP), SD = sd(SPP_PROP))  %>%
+  complete(regen$SPP, fill = list(MEAN_PROP = 0, SD = 0))
+totalMeanRegen$MEAP_PROP <- totalMeanRegen$MEAP_PROP*100
+totalMeanRegen$SD <- totalMeanRegen$SD*100
+```
+
+```{r}
+meanRegen <- meanRegen[meanRegen$SPP != "POBA",]
+meanRegen <- meanRegen[meanRegen$SPP != "PIGL",]
+meanRegen <- meanRegen[meanRegen$SPP != "ARCTO",]
+meanRegen <- meanRegen[meanRegen$SPP != "ALCR",]
+meanRegen <- meanRegen[meanRegen$SITE != "Lowland",]
+
+regenPlot <- ggplot(meanRegen, aes(x = as.factor(meanRegen$TREAT), y = meanRegen$MEAN_PROP, 
+                     color = meanRegen$SPP, group = meanRegen$SPP))+ facet_wrap(meanRegen$SITE) + 
+                geom_line() + geom_point(aes(shape = meanRegen$SPP))  + 
+        labs(x = "Number of Fires", y = "Mean proportion of species", title = "Proportion of Regeneration by Species") +
+        scale_shape_manual(values = c(16,17,18,19), 
+                           name = "Species", labels = c( "Birch", "Black Spruce", "Aspen", "Willow")) +
+        scale_color_manual(values = c( "#FFC300", "#3E4DE1", "#7ECA72", "#C70039"),
+          name = "Species", labels = c( "Birch", "Black Spruce", "Aspen", "Willow")) + 
+      theme( plot.title = element_text(hjust = 0)) + 
+      geom_errorbar(aes(ymin = meanRegen$MEAN_PROP - SD, 
+                        ymax = meanRegen$MEAN_PROP + SD), 
+                               width = .5, position = position_dodge(0.1))
+save_plot("regenPlot.png", regenPlot, base_aspect_ratio = 1.5)
+```
+
+```{r getting percentages for paper results}
+meanRegen$MEAN_PROP <- meanRegen$MEAN_PROP*100
+meanRegen$SD <- meanRegen$SD*(100)
+```
+
+```{r forum plot }
+forum_plot <- ggplot(meanRegen, aes(x = as.factor(meanRegen$TREAT), y = meanRegen$MEAN_PROP, 
+                     color = meanRegen$SPP, group = meanRegen$SPP)) + 
+  geom_line(size = 1.15) + panel_border() + background_grid() + 
+  geom_point()  +
+  scale_color_manual(values = c( "#FFC300", "#3E4DE1", "#7ECA72", "#C70039"),
+          name = "Species", labels = c( "Birch", "Black Spruce", "Aspen", "Willow")) +
+  labs(x = "Number of Fires", y = "Mean proportion of species", 
+       title = "Changes in species across fire history")
+save_plot( "forum.png",forum_plot, base_aspect_ratio = 1.5)
+```

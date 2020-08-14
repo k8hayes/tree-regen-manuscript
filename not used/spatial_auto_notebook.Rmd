@@ -1,0 +1,149 @@
+---
+title: "Spatial Autocorrelation"
+output: html_notebook
+---
+
+# Spatial Autocorrelation
+Want to get moran's I for stem count and basal area both for all sites and each site individually
+https://stats.idre.ucla.edu/r/faq/how-can-i-calculate-morans-i-in-r/
+
+
+```{r}
+library(ape)
+# install.packages("spdep")
+library(spdep)
+library(tidyverse)
+```
+
+```{r dalton}
+# unburned
+  tree <- read.csv("tree.csv")
+  sapling <- read.csv("sapling.csv")
+  both <- rbind(tree, sapling) ; rm(tree, sapling)
+  
+  both <- both[both$SITE == "DALTON",]
+  both <- both[both$TREAT == "0",]
+  
+  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+  regen.dist.inv <- 1/regen.dist
+  diag(regen.dist.inv) <-0
+  regen.dist.inv[1:5, 1:5]
+  
+  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(both$BASAL_HA, regen.dist)
+  
+# once-burned
+  tree <- read.csv("tree.csv")
+  sapling <- read.csv("sapling.csv")
+  both <- rbind(tree, sapling) ; rm(tree, sapling)
+  
+  both <- both[both$SITE == "DALTON",]
+  both <- both[both$TREAT == "1",]
+  
+  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+  regen.dist.inv <- 1/regen.dist
+  diag(regen.dist.inv) <-0
+  regen.dist.inv[1:5, 1:5]
+  
+  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(both$BASAL_HA, regen.dist)
+  
+# twice-burned
+  tree <- read.csv("tree.csv")
+  sapling <- read.csv("sapling.csv")
+  both <- rbind(tree, sapling) ; rm(tree, sapling)
+  
+  both <- both[both$SITE == "DALTON",]
+  both <- both[both$TREAT == "2",]
+  
+  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+  regen.dist.inv <- 1/regen.dist
+  diag(regen.dist.inv) <-0
+  regen.dist.inv[1:5, 1:5]
+  
+  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(both$BASAL_HA, regen.dist)  
+  
+# twice-burned
+  tree <- read.csv("tree.csv")
+  sapling <- read.csv("sapling.csv")
+  both <- rbind(tree, sapling) ; rm(tree, sapling)
+  
+  both <- both[both$SITE == "DALTON",]
+  both <- both[both$TREAT == "3",]
+  
+  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+  regen.dist.inv <- 1/regen.dist
+  diag(regen.dist.inv) <-0
+  regen.dist.inv[1:5, 1:5]
+  
+  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(both$BASAL_HA, regen.dist)  
+    
+```
+
+```{r steese}
+# unburned
+  tree <- read.csv("tree.csv")
+  sapling <- read.csv("sapling.csv")
+  both <- rbind(tree, sapling) ; rm(tree, sapling)
+  
+  both <- both[both$SITE == "STEESE",]
+  both <- both[both$TREAT == "0",]
+  
+  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+  regen.dist.inv <- 1/regen.dist
+  diag(regen.dist.inv) <-0
+  regen.dist.inv[1:5, 1:5]
+  
+  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(both$BASAL_HA, regen.dist)
+
+# once-burned
+  tree <- read.csv("tree.csv")
+  sapling <- read.csv("sapling.csv")
+  both <- rbind(tree, sapling) ; rm(tree, sapling)
+  
+  both <- both[both$SITE == "STEESE",]
+  both <- both[both$TREAT == "1",]
+  
+  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+  regen.dist.inv <- 1/regen.dist
+  diag(regen.dist.inv) <-0
+  regen.dist.inv[1:5, 1:5]
+  
+  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(both$BASAL_HA, regen.dist)
+
+# twice-burned
+  tree <- read.csv("tree.csv")
+  sapling <- read.csv("sapling.csv")
+  both <- rbind(tree, sapling) ; rm(tree, sapling)
+  
+  both <- both[both$SITE == "STEESE",]
+  both <- both[both$TREAT == "2",]
+  
+  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+  regen.dist.inv <- 1/regen.dist
+  diag(regen.dist.inv) <-0
+  regen.dist.inv[1:5, 1:5]
+  
+  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(both$BASAL_HA, regen.dist)
+  
+# thrice-burned
+  tree <- read.csv("tree.csv")
+  sapling <- read.csv("sapling.csv")
+  both <- rbind(tree, sapling) ; rm(tree, sapling)
+  
+  both <- both[both$SITE == "STEESE",]
+  both <- both[both$TREAT == "3",]
+  
+  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+  regen.dist.inv <- 1/regen.dist
+  diag(regen.dist.inv) <-0
+  regen.dist.inv[1:5, 1:5]
+  
+  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(both$BASAL_HA, regen.dist)
+```

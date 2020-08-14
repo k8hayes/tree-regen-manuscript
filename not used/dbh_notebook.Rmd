@@ -1,0 +1,505 @@
+---
+title: "DBH"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+getwd()
+
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+library(tidyr)
+```
+
+## Working with DBH data
+
+I'm using this to streamline how I've been working with DBH data - so far, I've been working in multiple scripts and it's been a mess. There's a few standard processes I'll need to apply to both dalton and steese, so this should be the place to do it. I'm also hoping this will be the file I'll come back to for carbon estimates. 
+
+9/1 - Revisiting to add in steese controls! will look over file first, and then decide the best place to add. 
+
+```{r loading in data}
+steese_clump <- read.csv("data/Steese_CLUMPED_DBH.csv")
+# dalton_clump <- read.csv("data/")
+```
+
+One of the first steps is to remove anything with a canopy cover of zero. 
+
+As it turns out, I may have been doing the "clumping" wrong - for the regen paper, what I really want is the number of trees that have stuck around long enough to survive and establish. That means nothing dead. So, I'll need to take out any trees with a canopy of zero. I'm going to do that in the unclumped data, export the file as a new csv, and then start that process again. Ideally, it'll be quicker, since there's not as many stems. I think I'll save the clumped files though - maybe they'll be useful for carbon estimates. 
+
+```{r removing 0s}
+steese_clump <- steese_clump[(steese_clump$CAN_AV > 0),]
+# dalton_clump <- dalton_clump[(dalton_clump$CAN_AV > 0),]
+```
+
+```{r streamlining manual clumping steese}
+steese_zero <- read.csv("data/old dbh/Steese_DBH.csv")
+# steese_zero <- steese_zero[(steese_zero$CAN >0),] # Took out 1012 entries
+
+# i also might try something to make the process go a little faster - maybe i can atleast enter 1s for stem count for the individual trees
+steese_zero$STEM_COUNT[(steese_zero$CLUMP == "IND")] <- 1
+
+#testing others
+
+steese_zero$CAN_AV[(steese_zero$CLUMP == "IND")] <- steese_zero$CAN[(steese_zero$CLUMP == "IND")]
+steese_zero$DBH_AV[(steese_zero$CLUMP == "IND")] <- steese_zero$DBH[(steese_zero$CLUMP == "IND")]
+steese_zero$BROW_INDEX[(steese_zero$CLUMP == "IND" & steese_zero$B == "Y")] <- 1
+steese_zero$BROW_INDEX[(steese_zero$CLUMP == "IND" & steese_zero$B == "N")] <- 0
+steese_zero$BROW_INDEX[(steese_zero$CLUMP == "IND" & steese_zero$B == "y")] <- 1
+steese_zero$BROW_INDEX[(steese_zero$CLUMP == "IND" & steese_zero$B == "n")] <- 0
+
+# removing zeros just for individual stems
+steese_zero <- steese_zero[!(steese_zero$CLUMP == "IND" & steese_zero$CAN == 0),]
+
+
+colnames(steese_zero)
+steese_zero <- steese_zero[c("SITE", "SITECODE", "SITENUM", "TREAT", "SPP", "DBH_AV", "DBH", "CAN_AV", "CAN", "BROW_INDEX", "B", "UND", "CLUMP.STARTS", "CLUMP", "STEM_COUNT", "QUADRANT")]
+
+#yeah!!
+write.csv(x = steese_zero, file = "steese_DBH_Zero.csv")
+```
+
+Doing the same for Dalton:
+```{r streamlining manual clumping dalton}
+dalton_zero <- read.csv("data/Dalton_DBH.csv")
+# steese_zero <- steese_zero[(steese_zero$CAN >0),] # Took out 1012 entries
+
+# i also might try something to make the process go a little faster - maybe i can atleast enter 1s for stem count for the individual trees
+
+dalton_zero$STEM_COUNT[(dalton_zero$CLUMP == "IND")] <- 1
+#testing others
+
+dalton_zero$CAN_AV[(dalton_zero$CLUMP == "IND")] <- dalton_zero$CANOPY[(dalton_zero$CLUMP == "IND")]
+dalton_zero$DBH_AV[(dalton_zero$CLUMP == "IND")] <- dalton_zero$DBH[(dalton_zero$CLUMP == "IND")]
+dalton_zero$BROW_INDEX[(dalton_zero$CLUMP == "IND" & dalton_zero$BROWSE == "Y")] <- 1
+dalton_zero$BROW_INDEX[(dalton_zero$CLUMP == "IND" & dalton_zero$BROWSE == "N")] <- 0
+dalton_zero$BROW_INDEX[(dalton_zero$CLUMP == "IND" & dalton_zero$BROWSE == "y")] <- 1
+dalton_zero$BROW_INDEX[(dalton_zero$CLUMP == "IND" & dalton_zero$BROWSE == "n")] <- 0
+
+# removing zeros just for individual stems
+dalton_zero <- dalton_zero[!(dalton_zero$CLUMP == "IND" & dalton_zero$CANOPY == 0),] # down by atleast 1k
+
+colnames(dalton_zero)
+dalton_zero <- dalton_zero[c("SITE", "SITECODE", "SITENUM", "TREATMENT", "SPECIES", "DBH_AV", "DBH", "CAN_AV", "CANOPY", "BROW_INDEX", "BROWSE", "UNDERSTORY", "START_END", "CLUMP", "STEM_COUNT", "QUAD")]
+
+#yeah!!
+write.csv(x = dalton_zero, file = "dalton_DBH_Zero.csv")
+```
+
+Alright! In theory, I've clumped all data. Now let's take a crack at combining the files. 
+```{r combining dalton and steese }
+rm(list = ls())
+dalton <- read.csv("data/dalton_ClumpDBH_NoZero.csv")
+steese <- read.csv("data/steese_ClumpDBH_NoZero.csv")
+
+# changing column names to match
+#colnames(dalton) <- c("SITE", "SITECODE", "SITENUM", "TREAT", "SPP", "DBH_AV", "CAN_AV", "BROW_INDEX", "UND", "CLUMP", "STEM_COUNT", "QUAD")
+#colnames(steese) <- c("SITE", "SITECODE", "SITENUM", "TREAT", "SPP", "DBH_AV", "CAN_AV", "BROW_INDEX", "UND", "CLUMP", "STEM_COUNT", "QUAD")
+
+
+#write.csv(dalton, "data/dalton_ClumpDBH_NoZero.csv")
+#write.csv(steese, "data/steese_ClumpDBH_NoZero.csv")
+
+# combining files
+clumpDBH <- rbind(dalton, steese)
+ clumpDBH <- clumpDBH[-1] # gets rid of first column
+
+# now for some data management:
+unique(clumpDBH$SPP)
+# merging all salix
+clumpDBH$SPP[clumpDBH$SPP == "SAGL"] <- "SALIX"
+clumpDBH$SPP[clumpDBH$SPP == "SA_3"] <- "SALIX"
+clumpDBH$SPP[clumpDBH$SPP == "SA_6"] <- "SALIX"
+clumpDBH$SPP[clumpDBH$SPP == "SA_7"] <- "SALIX"
+clumpDBH$SPP[clumpDBH$SPP == "SA_8"] <- "SALIX"
+clumpDBH$SPP[clumpDBH$SPP == "SA_5"] <- "SALIX"
+clumpDBH$SPP[clumpDBH$SPP == "SAGL_R"] <- "SALIX"
+clumpDBH$SPP[clumpDBH$SPP == "SADE"] <- "SALIX"
+clumpDBH$SPP[clumpDBH$SPP == "SAPU"] <- "SALIX"
+# merging arcto
+clumpDBH$SPP[clumpDBH$SPP == "ARCT"] <- "ARCTO"
+
+# getting rid of TLS sites because they annoy me
+#unique(clumpDBH$SITECODE)
+#clumpDBH$SITECODE[clumpDBH$SITECODE == "12_1_TLS"] <- "12_1"
+#clumpDBH$SITECODE[clumpDBH$SITECODE == "65_1_TLS"] <- "65_1"
+#clumpDBH$SITECODE[clumpDBH$SITECODE == "50_1_TLS"] <- "50_1"
+#clumpDBH$SITECODE[clumpDBH$SITECODE == "64_1_TLS"] <- "64_1"
+
+#write.csv(clumpDBH, "ClumpDBH.csv", row.names = FALSE)
+
+
+# now let's double check some of the other columns
+summary(clumpDBH$DBH_AV) # looks fine
+#which(clumpDBH$DBH_AV == "NA")
+
+#summary(clumpDBH$CAN_AV)
+#which(clumpDBH$CAN_AV > 100)
+#clumpDBH[2140,]
+
+# summary(clumpDBH$CLUMP)
+#which(clumpDBH$CLUMP == "START")
+#clumpDBH[1893,]
+
+#summary(clumpDBH$BROW_INDEX)
+#which(clumpDBH$BROW_INDEX == "Y")
+#clumpDBH[1883,]
+#clumpDBH[which(clumpDBH$BROW_INDEX >1),]
+
+#summary(clumpDBH$STEM_COUNT)
+#which(is.na(clumpDBH) == "TRUE")
+#clumpDBH[33156,]
+#length(clumpDBH$STEM_COUNT)
+
+length((unique(clumpDBH$SITENUM)))
+```
+
+Now I shouldn't have to run much from that paragraph of code again. In theory I can start from here:
+
+```{r}
+clumpDBH <- read.csv("ClumpDBH.csv", stringsAsFactors = FALSE)
+```
+
+Now here's the fun part:
+
+Here's the code for counting the number of each species at each site:
+```{r counting species at each site}
+# counting number of each
+countDBH <- clumpDBH %>% 
+  group_by(clumpDBH$SITE,clumpDBH$TREAT, clumpDBH$SITECODE, clumpDBH$SPP) %>% 
+  summarise(n = n())%>%
+  complete(clumpDBH$SPP,
+             fill = list(n = 0)) # this is to fill the zero count rows with zeros
+colnames(countDBH) <- c("SITE", "TREAT", "SITECODE", "SPP", "STEM_COUNT")
+```
+
+Next, before I can merge with the other columns (herb, dbh, etc), I need to scale up the counts for each quadrant. This might be a little fussy...
+IMPORTANT NOTE: everything gets scaled to 2 quadrants
+```{r scaling up quadrant counts}
+# the last thing involved with counting each number is scaling up the quadrant 
+unique(clumpDBH$SITECODE[clumpDBH$QUAD ==1]) # which ones just need to be doubled
+# 44_0, 28_1, 33_1, 18_1, 4_2, 19_2
+
+# so!
+countDBH$STEM_COUNT[countDBH$SITECODE == "44_0"] <- countDBH$STEM_COUNT[countDBH$SITECODE == "44_0"]*2
+countDBH$STEM_COUNT[countDBH$SITECODE == "28_1"] <- countDBH$STEM_COUNT[countDBH$SITECODE == "28_1"]*2
+countDBH$STEM_COUNT[countDBH$SITECODE == "33_1"] <- countDBH$STEM_COUNT[countDBH$SITECODE == "33_1"]*2
+countDBH$STEM_COUNT[countDBH$SITECODE == "18_1"] <- countDBH$STEM_COUNT[countDBH$SITECODE == "18_1"]*2
+countDBH$STEM_COUNT[countDBH$SITECODE == "4_2"] <- countDBH$STEM_COUNT[countDBH$SITECODE == "4_2"]*2
+countDBH$STEM_COUNT[countDBH$SITECODE == "19_2"] <- countDBH$STEM_COUNT[countDBH$SITECODE == "19_2"]*2
+
+# what else we got 
+unique(clumpDBH$SITECODE[clumpDBH$QUAD ==0.1])
+# 15_3, 12_1, 50_1, 64_1
+countDBH$STEM_COUNT[countDBH$SITECODE == "15_3"] <- countDBH$STEM_COUNT[countDBH$SITECODE == "15_3"]*10
+countDBH$STEM_COUNT[countDBH$SITECODE == "12_1"] <- countDBH$STEM_COUNT[countDBH$SITECODE == "12_1"]*10
+countDBH$STEM_COUNT[countDBH$SITECODE == "50_1"] <- countDBH$STEM_COUNT[countDBH$SITECODE == "50_1"]*10
+countDBH$STEM_COUNT[countDBH$SITECODE == "64_1"] <- countDBH$STEM_COUNT[countDBH$SITECODE == "64_1"]*10
+
+write.csv(countDBH, "data/countDBH.csv", row.names = FALSE)
+```
+
+
+```{r starting point after processing}
+# new starting point 
+countDBH <- read.csv("data/countDBH.csv")
+```
+
+```{r calculating dbh sums for plot level per species}
+# calculating sum of dbh for each
+ detach(package:cowplot)
+detach(package:ggplot2)
+test <-  clumpDBH %>% 
+  group_by(clumpDBH$SITE,clumpDBH$TREAT, clumpDBH$SITECODE, clumpDBH$SPP) %>% 
+  summarise(DBHsum = sum(DBH_AV), CanAV = mean(CAN_AV), BrowAV = mean(BROW_INDEX)) %>%
+  complete( clumpDBH$SPP, fill = list(DBHsum = 0, CanAV = 0, BrowAV = 0 ))
+colnames(test) <- c("SITE", "TREAT", "SITECODE", "SPP", "DBH_SUM", "CAN_AV", "BROW_INDEX_MEAN")
+```
+
+
+```{r}
+# actually, I also want to scale the DBH sums up 
+unique(clumpDBH$SITECODE[clumpDBH$QUAD ==1]) # which ones just need to be doubled
+# 44_0, 28_1, 33_1, 18_1, 4_2, 19_2
+
+test$DBH_SUM[test$SITECODE == "44_0"] <- test$DBH_SUM[test$SITECODE == "44_0"]*2
+test$DBH_SUM[test$SITECODE== "28_1"] <- test$DBH_SUM[test$SITECODE== "28_1"]*2
+test$DBH_SUM[test$SITECODE == "33_1"] <- test$DBH_SUM[test$SITECODE == "33_1"]*2
+test$DBH_SUM[test$SITECODE == "18_1"] <- test$DBH_SUM[test$SITECODE == "18_1"]*2
+test$DBH_SUM[test$SITECODE == "4_2"] <- test$DBH_SUM[test$SITECODE == "4_2"]*2
+test$DBH_SUM[test$SITECODE == "19_2"] <- test$DBH_SUM[test$SITECODE == "19_2"]*2
+
+unique(clumpDBH$SITECODE[clumpDBH$QUAD ==0.1])
+# 15_3, 12_1, 50_1, 64_1
+test$DBH_SUM[test$SITECODE == "15_3"] <- test$DBH_SUM[test$SITECODE == "15_3"]*10
+test$DBH_SUM[test$SITECODE== "12_1"] <- test$DBH_SUM[test$SITECODE== "12_1"]*10
+test$DBH_SUM[test$SITECODE == "50_1"] <- test$DBH_SUM[test$SITECODE == "50_1"]*10
+test$DBH_SUM[test$SITECODE == "64_1"] <- test$DBH_SUM[test$SITECODE == "64_1"]*10
+
+write.csv(test, "data/test.csv", row.names = FALSE)
+```
+
+```{r}
+# merging the two
+secondRegen <- merge(countDBH, test, by = c("SITE", "TREAT", "SITECODE", "SPP"))
+rm(test)
+secondRegen1 <- apply(secondRegen,2,as.character)
+write.csv(secondRegen1, "data/stemRegen.csv", row.names = FALSE)
+rm(secondRegen1)
+```
+
+Got it!!
+
+```{r 12/4 regen vs org depth script}
+# comparing organic layer depth to regen (primary and secondary)
+# 12/4
+
+# setting up 
+  library(ggplot2)
+  library(cowplot)
+  library(dplyr)
+  library(tidyr)
+  rm(list = ls())
+  dev.off()
+  
+  # loading files
+  org_depth <- read.csv("data/Org_Depth.csv")
+  total_regen <- read.csv("data/total_regen.csv")
+  percent_cover <- read.csv("data/soil_percent_cover.csv")
+  
+max(org_depth$ORG_DEPTH[org_depth$TREATMENT == "0"])
+min(org_depth$ORG_DEPTH[org_depth$TREATMENT == "0"])
+
+max(org_depth$ORG_DEPTH[org_depth$TREATMENT == "3"])
+min(org_depth$ORG_DEPTH[org_depth$TREATMENT == "3"])
+
+  
+  # organic depth
+  dalton_org_depth <- org_depth[(org_depth$SITE == "DALTON"),]
+  steese_organic_depth <- org_depth[(org_depth$SITE == "STEESE"),]
+
+# comp_regen_org <- aggregate(org_depth$ORG_DEPTH ~ org_depth$SITENUM, org_depth, mean) 
+# write.csv(comp_regen_org, "comp_regen_org.csv")
+# comp_regen_org <- read.csv("comp_regen_org.csv")
+colnames(comp_regen_org) <- c("site", "sitenum", "org_mean")
+comp_regen_org$treat <- aggregate(org_depth$TREATMENT ~ org_depth$SITENUM, org_depth, max)[,2]
+comp_regen_org$total_regen_ha <- aggregate(total_regen$stem_count_ha ~ total_regen$SITENUM, total_regen, sum)[,2]
+
+# compiling conifer / deciduous totals
+division_count <- total_regen %>%
+  group_by(total_regen$SITENUM, total_regen$DIVISON) %>%
+  do(sum = sum(.$STEM_COUNT)) %>%
+  complete(total_regen$SITENUM, total_regen$DIVISON, fill = list(count = 0)) # fills in zeros for conifers
+data.frame(division_count)
+
+conifer_count <- data.frame(division_count[(division_count$`total_regen$DIVISON` == "c"),])
+colnames(conifer_count) <- c("sitenum", "division", "conifer_count")
+deciduous_count <- data.frame(division_count[(division_count$`total_regen$DIVISON` == "d"),])
+colnames(deciduous_count) <- c("sitenum", "division", "deciduous_count")
+
+# turning nulls into zeros
+conifer_count$conifer_count[conifer_count$conifer_count == "NULL"] <- "0"
+# merging files
+comp_regen_org = merge(comp_regen_org, deciduous_count, by.x=c("sitenum"), by.y=c("sitenum"))
+comp_regen_org = merge(comp_regen_org, conifer_count, by.x = "sitenum", by.y = "sitenum")
+# removing excess files
+rm(conifer_count, deciduous_count, division_count)
+# removing weird columns
+comp_regen_org <- comp_regen_org[-c(6, 8)]
+# scaling up to ha and change to numeric
+comp_regen_org$conifer_ha <- as.numeric(comp_regen_org$conifer_count)*50
+comp_regen_org$decid_ha <- as.numeric(comp_regen_org$deciduous_count) * 50
+# removing more weird columns
+comp_regen_org <- comp_regen_org[-c(6,7)]
+
+# adding max and min org depth layers
+comp_regen_org$max_depth <- aggregate(org_depth$ORG_DEPTH ~ org_depth$SITENUM, org_depth, max)[,2]
+comp_regen_org$min_depth <- aggregate(org_depth$ORG_DEPTH ~ org_depth$SITENUM, org_depth, min)[,2]
+comp_regen_org$sd_depth <- aggregate(org_depth$ORG_DEPTH ~ org_depth$SITENUM, org_depth, sd)[,2]
+
+# compiling percent cover
+comp_regen_org$per_org <- aggregate(percent_cover$ORGANIC ~ percent_cover$SITENUM, percent_cover, mean)[,2]
+comp_regen_org$per_min <- aggregate(percent_cover$MINERAL ~ percent_cover$SITENUM, percent_cover, mean)[,2]
+
+
+# plotting
+  org_depth_plot <- ggplot(org_depth, aes(x = factor(org_depth$TREATMENT), y = org_depth$ORG_DEPTH, fill = org_depth$SITE)) + 
+    geom_boxplot() + 
+    scale_fill_manual(name = "Site Type",
+                      values = c("#d95f0e", "#fec44f"), 
+                      labels = c("Upland", "Lowland")) + 
+    labs(title = "Organic Layer Depth", 
+         x = "Number of Fires", y = "Organic layer depth (cm)") + 
+    theme(plot.title = element_text(hjust = 0))
+  save_plot("org_depth.png", org_depth_plot, base_aspect_ratio = 1.5)
+
+ggplot(comp_regen_org, aes(x = comp_regen_org$org_mean, y = comp_regen_org$total_regen_ha)) + 
+  geom_point(aes(color = factor(comp_regen_org$treat)), size = 3) + 
+  geom_errorbarh(aes(xmax =  comp_regen_org$org_mean + comp_regen_org$sd_depth, 
+                     xmin = comp_regen_org$org_mean - comp_regen_org$sd_depth,
+                     height = 7,
+                     color = factor(comp_regen_org$treat))) + 
+  facet_wrap(comp_regen_org$site) + panel_border() + background_grid() + 
+  scale_color_brewer(name = "Treatment",
+                     palette = "YlOrRd") + 
+  labs(y = "Av. Organic Layer Depth (cm)", 
+       x = "Total Regen (stem count) per ha")
+
+dalton_com_regen <- comp_regen_org[(comp_regen_org$site == "DALTON"),]
+steese_com_regen <- comp_regen_org[(comp_regen_org$site == "STEESE"),]
+
+high_regen_org <- ggplot(dalton_com_regen, aes(x = dalton_com_regen$org_mean, y = dalton_com_regen$total_regen_ha)) +
+  geom_point(aes(color = factor(dalton_com_regen$treat)), size = 3) +
+  geom_errorbarh(aes(xmax = dalton_com_regen$org_mean + dalton_com_regen$sd_depth,
+                     xmin = dalton_com_regen$org_mean - dalton_com_regen$sd_depth, 
+                     color = factor(dalton_com_regen$treat)), height = 7) +
+  panel_border() + background_grid() + 
+  scale_color_brewer(name = "Number of Fires",
+                     palette = "YlOrRd") + 
+  labs(title = "High Severity Sites",
+      x = "Av. Organic Layer Depth (cm)", 
+       y = "Total Regen. (stem count) per ha") + 
+  theme(plot.title = element_text(hjust = 0))
+
+mod_regen_org <- ggplot(steese_com_regen, aes(x = steese_com_regen$org_mean, y = steese_com_regen$total_regen_ha)) +
+  geom_point(aes(color = factor(steese_com_regen$treat)), size = 3) +
+  geom_errorbarh(aes(xmax = (steese_com_regen$org_mean + steese_com_regen$sd_depth),
+                     xmin = (steese_com_regen$org_mean - steese_com_regen$sd_depth), 
+                     color = factor(steese_com_regen$treat))) +
+  panel_border() + background_grid() + 
+  scale_color_brewer(name = "Number of Fires",
+                     palette = "YlOrRd") + 
+  labs(title = "Moderate Severity Sites",
+       x = "Av. Organic Layer Depth (cm)", 
+       y = "Total Regen. (stem count) per ha") + 
+  theme(plot.title = element_text(hjust = 0))
+both <- plot_grid(high_regen_org, mod_regen_org, labels = c("A.", "B."))
+save_plot("regen_org.png", both, nrow = 1, ncol = 2, base_aspect_ratio = 1.5)
+
+# plotting percent cover of soil
+# full dataset
+ggplot(percent_cover, aes(x = factor(percent_cover$TREATMENT), y = percent_cover$MINERAL, fill = percent_cover$SITE)) + 
+  geom_boxplot() + panel_border() + background_grid()
+ggplot(percent_cover, aes(x = factor(percent_cover$TREATMENT), y = percent_cover$ORGANIC, fill = percent_cover$SITE)) + 
+  geom_boxplot() + panel_border() + background_grid()
+
+# average
+ggplot(comp_regen_org, aes(y = comp_regen_org$per_org, x = factor(comp_regen_org$treat), fill = comp_regen_org$site)) + 
+  geom_boxplot() + panel_border() + background_grid() +
+  labs(title = "Percent Cover of Organic Soils",
+       x = "Av. percent cover", 
+       y = "Treatment") + 
+  theme(plot.title = element_text(hjust = 0))
+ggplot(comp_regen_org, aes(y = comp_regen_org$per_min, x = factor(comp_regen_org$treat), fill = comp_regen_org$site)) + 
+  geom_boxplot() + panel_border() + background_grid() +
+  labs(title = "Percent Cover of Mineral Soils",
+       x = "Av. percent cover", 
+       y = "Treatment") + 
+  theme(plot.title = element_text(hjust = 0))
+
+##########
+# plotting org depth against regen
+without_control <- comp_regen_org[(comp_regen_org$treat >0),]
+plot(without_control$total_regen_ha ~ without_control$org_mean)
+abline(lm(without_control$total_regen_ha ~ without_control$org_mean), add = T)
+
+# conifer regen
+plot(without_control$conifer_ha ~ without_control$org_mean)
+abline(lm(without_control$conifer_ha ~ without_control$org_mean))
+summary(lm(without_control$conifer_ha ~ without_control$org_mean))
+# deciduous
+plot(without_control$decid_ha ~ without_control$org_mean)
+abline(lm(without_control$decid_ha ~ without_control$org_mean))     
+
+######################
+# getting numbers for grant
+
+```
+
+```{r final product}
+stemRegen <- read.csv("data/stemRegen.csv")
+```
+
+## adding steese controls
+I'll need to replicate some of the processes above to add in the steese controls, but hopefully there'll be some shortcuts. Getting total stem count per species should be a good place to start
+
+```{r loading in steese controls}
+steese_control <- read.csv("data/steese_stem_control_clump.csv")
+colnames(steese_control) # "SITE"  "SITECODE" "TREAT" "SPP" "DBH..CM." "CANOPY"  "HEIGHT..M." "B_TYPE"         "MAX_B_WIDTH" "STEM_TYPE" "CLUMP_TYPE"  "BROWSE"  "QUAD"  "TOTAL_STEM_SUM"
+# revising column names in excel # no more periods
+
+# now, can remove some columns for our purposes with the regen paper
+# height, browse etc can all get dropped
+# steese_control <- steese_control[-7] # drops height
+# steese_control <- steese_control[-8] # drops browse width
+#steese_control <- steese_control[-7] # drops browse type
+colnames(steese_control) <- c("SITE", "SITECODE", "TREAT","SPP", "DBH_AV", "CAN_AV", "CLUMP", "STEM_COUNT","BROW_INDEX","QUAD", "TOTAL_STEM_SUM" )
+
+# replacing NAS in clumped data with 1s
+steese_control$STEM_COUNT[(steese_control$CLUMP == "IND")] <- 1
+```
+Okay, let's start there:
+```{r removing zeros CONTROL}
+steese_control <- steese_control[(steese_control$CAN_AV > 0),]
+```
+
+```{r counting species at each site CONTROL}
+# counting number of each
+controlDBH <- steese_control %>% 
+  group_by(steese_control$SITE, steese_control$TREAT, steese_control$SITECODE, steese_control$SPP) %>% 
+  summarise(n = n())%>%
+  complete(steese_control$SPP,
+             fill = list(n = 0)) # this is to fill the zero count rows with zeros
+colnames(controlDBH) <- c("SITE", "TREAT", "SITECODE", "SPP", "STEM_COUNT")
+controlDBH
+# scaling up to 2 quadrants
+controlDBH$STEM_COUNT <- controlDBH$STEM_COUNT*2
+```
+Perfect! Now I might go manually enter some of these, probably back into the countDBH file. 
+Got it, okay. Wait wopps - need to scale up quadrants. 
+
+Next is counting the dbh per plot per species
+
+```{r calculating dbh sums for plot level per species}
+# calculating sum of dbh for each
+ detach(package:cowplot)
+detach(package:ggplot2)
+test <- steese_control %>% 
+  group_by(steese_control$SITE, steese_control$TREAT, steese_control$SITECODE, steese_control$SPP) %>% 
+  summarise(DBHsum = sum(DBH_AV), CanAV = mean(CAN_AV), BrowAV = mean(BROW_INDEX)) %>%
+  complete(steese_control$SPP, fill = list(DBHsum = 0, CanAV = 0, BrowAV = 0 ))
+colnames(test) <- c("SITE", "TREAT", "SITECODE", "SPP", "DBH_SUM", "CAN_AV", "BROW_INDEX_MEAN")
+
+# scaling up to 2 quadrants
+test$DBH_SUM <- test$DBH_SUM*2 
+```
+
+Merging the stem counts and dbh/browse/canopy
+
+```{r merging stem count and dbh data CONTROL}
+# merging the two
+controlRegen <- merge(controlDBH, test, by = c("SITE", "TREAT", "SITECODE", "SPP"))
+rm(test)
+colnames(controlRegen) <- c("SITE", "TREAT", "SITECODE", "SPP", "SPP_TOTAL_COUNT", "DBH_SUM", "CAN_AV", "BROW_INDEX_AV")
+
+
+# adding site total count
+controlRegen$SITE_TOTAL_COUNT[controlRegen$SITECODE == "1_0"] <- (155*2)  
+controlRegen$SITE_TOTAL_COUNT[controlRegen$SITECODE == "31_0"] <- 108
+controlRegen$SITE_TOTAL_COUNT[controlRegen$SITECODE == "6_0"] <- 182
+controlRegen$SITE_TOTAL_COUNT[controlRegen$SITECODE == "9_0"] <- 210
+
+# adding species proportions
+controlRegen$SPP_PROP <- controlRegen$SPP_TOTAL_COUNT / controlRegen$SITE_TOTAL_COUNT
+
+# changing STEESE to lowland before merge
+controlRegen$SITE <- "Lowland"
+
+# merging with stem regen
+test1 <- rbind(stemRegen, controlRegen)
+write.csv(test1, "data/stemRegen_wControl.csv", row.names = FALSE)
+```
+
+Looks like it worked - I'll need to go in and add rows for ALCR/ARCTO etc, but I'll do that by hand

@@ -1,0 +1,10 @@
+"0","```r
+```r
+upland <- adven_root[adven_root$SITE == \DALTON\,]
+
+summary(upland$DEPTH[upland$TREAT == 1])
+
+summary(upland$DEPTH[upland$TREAT == 2])
+24/10
+```
+```"
