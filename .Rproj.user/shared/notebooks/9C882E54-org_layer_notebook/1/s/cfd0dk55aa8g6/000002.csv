@@ -1,9 +1,0 @@
-"0","```r
-```r
-  library(ggplot2)
-  library(cowplot)
-  library(dplyr)
-  theme_set(theme_cowplot())
-  rm(list = ls())
-```
-```"

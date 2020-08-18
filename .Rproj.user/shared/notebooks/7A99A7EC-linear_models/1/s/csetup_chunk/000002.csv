@@ -1,6 +1,0 @@
-"0","library(sjPlot) "
-"0","library(here)"
-"0","library(parameters)"
-"0","library(ggplot2) "
-"0","library(cowplot); theme_set(theme_cowplot()) "
-"0","options(scipen = 9999)"
