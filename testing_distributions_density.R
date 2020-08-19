@@ -88,7 +88,7 @@ hist(CONIF_dens$COUNT)									#check
   temp5 <- temp4[duplicated(temp4[,1]),]
   DECID_dens_new <- temp5[duplicated(temp5[,1]),]
   DECID_dens_new <- DECID_dens_new[,1:4]						#remove extra columns
-  rm(temp2, temp3, temp4, temp5) # cleaning up workspace
+  rm(temp,temp2, temp3, temp4, temp5, cnt, trt) # cleaning up workspace
   
   names(DECID_dens_new) <- c("PLOT","COUNT","TREAT", "SITE")			#get names back in there
   DECID_dens <- DECID_dens_new								#back to original name so code below works
