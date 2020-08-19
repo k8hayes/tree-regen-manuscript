@@ -3,10 +3,9 @@ library(tidyverse)
 library(sjPlot)
 library(MASS)
 library(here)
-# library(parameters)
+library(parameters)
 # library(stats)
 library(cowplot); theme_set(theme_cowplot()) 
-# options(scipen = 9999)
 
 # bringing in data
   species_dens <- read.csv(("species_dens.csv"))
@@ -49,9 +48,11 @@ hist(CONIF_dens$COUNT)									#check
     plot(mC_D.nb, main="NB")
 
   # parameters
-    summary(mC_D); # model_parameters(mC_D)
+    summary(mC_D)
     summary(mC_D.nb)
     summary(mC_D_qp)
+    
+    model_parameters(mC_D.nb)
  
   #note the prediction vs. observed isn't great, but that's not the point here
   plot(predict(mC_D.nb, type="response",se.fit=T)$fit,CONIF_dens$COUNT)	#plots the exponentiated prediction back
@@ -104,9 +105,11 @@ hist(CONIF_dens$COUNT)									#check
   plot(mD_D.nb, main="NB")
   
   # parameters
-  summary(mD_D); # model_parameters(mD_D)
+  summary(mD_D)
   summary(mD_D.nb)
   summary(mD_D_qp)
+  
+  model_parameters(mD_D.nb)
   
   dev.off()
   plot(predict(mD_D.nb, type="response",se.fit=T)$fit,DECID_dens$COUNT)	#plots the exponentiated prediction back
