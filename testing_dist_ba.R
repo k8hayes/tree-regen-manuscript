@@ -1,4 +1,4 @@
-#  tesing distributions: basal area
+#  testing distributions: basal area
 library(tidyverse)
 library(sjPlot)
 library(MASS)

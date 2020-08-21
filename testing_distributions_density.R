@@ -52,7 +52,7 @@ hist(CONIF_dens$COUNT)									#check
     summary(mC_D.nb)
     summary(mC_D_qp)
     
-    model_parameters(mC_D.nb)
+    # model_parameters(mC_D.nb)
  
   #note the prediction vs. observed isn't great, but that's not the point here
   plot(predict(mC_D.nb, type="response",se.fit=T)$fit,CONIF_dens$COUNT)	#plots the exponentiated prediction back
