@@ -45,8 +45,10 @@ dalton <- dalton %>%
     dalton$BA[dalton$PLOT == "28_1"] <- dalton$BA[dalton$PLOT == "28_1"]*2
     dalton$BA[dalton$PLOT == "44_0"] <- dalton$BA[dalton$PLOT == "44_0"]*2
 
+    unique(dalton$PLOT[dalton$QUAD == 0.2]) # 15_3
+    dalton$BA[dalton$PLOT == "15_3"] <- dalton$BA[dalton$PLOT == "15_3"]*10
+    
     unique(dalton$PLOT[dalton$QUAD == 0.1]) # 15_3 12_1 50_1 
-    dalton$BA[dalton$PLOT == "15_3"] <- dalton$BA[dalton$PLOT == "15_3"]*20
     dalton$BA[dalton$PLOT == "12_1"] <- dalton$BA[dalton$PLOT == "12_1"]*20
     dalton$BA[dalton$PLOT == "50_1"] <- dalton$BA[dalton$PLOT == "50_1"]*20
 
