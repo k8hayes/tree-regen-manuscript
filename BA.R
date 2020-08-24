@@ -4,6 +4,7 @@ library(cowplot)
 library(here)
 theme_set(theme_cowplot())
 options(scipen = 9999)
+se <- function(x) sqrt(var(x)/length(x))
 
 dalton <- read.csv(here("data/Dalton_DBH.csv"), stringsAsFactors = F)
 
@@ -110,3 +111,31 @@ write.csv(species_ba, "species_ba.csv", row.names = F)
 # also writing full data file for modeling 
 ba <- rbind(dalton, steese)
 write.csv(ba, "ba.csv", row.names = F)
+
+#############################################
+# getting values 
+species_ba <- read_csv(here("species_ba.csv"))
+
+treat_ba <- species_ba %>%
+  group_by(SITE, TREAT, DIV) %>%
+  summarise(AV = mean(BA_HA), SE = se(BA_HA))
+
+treat_ba$SE <- round(treat_ba$SE, digits = 0)
+treat_ba$AV <- round(treat_ba$AV, digits = 0)
+
+dalt_con_ba <- treat_ba %>%
+  filter(SITE == "DALTON") %>%
+  filter(DIV == "c")
+
+stee_con_ba <- treat_ba %>%
+  filter(SITE == "STEESE") %>%
+  filter(DIV == "c")
+
+dalt_dec_ba <- treat_ba %>%
+  filter(SITE == "DALTON") %>%
+  filter(DIV == "d")
+
+stee_dec_ba <- treat_ba %>%
+  filter(SITE == "STEESE") %>%
+  filter(DIV == "d")
+
