@@ -4,6 +4,7 @@ library(cowplot)
 library(here)
 theme_set(theme_cowplot())
 options(scipen = 9999)
+se <- function(x) sqrt(var(x)/length(x))
 
 dalton <- read.csv(here("data/dalton_DBH.csv"))
 
@@ -117,3 +118,30 @@ species_dens <- dalt_seed_dens %>%
   summarise(COUNT = sum(COUNT))
 species_dens$COUNT_HA <- species_dens$COUNT * 50
 write.csv(species_dens,"species_dens.csv", row.names = F)
+
+#############################################
+# getting values 
+species_dens <- read_csv(here("species_dens.csv"))
+
+treat_dens <- species_dens %>%
+  group_by(SITE, TREAT, DIV) %>%
+  summarise(AV = mean(COUNT_HA), SE = se(COUNT_HA))
+
+treat_dens$SE <- round(treat_dens$SE, digits = 0)
+treat_dens$AV <- round(treat_dens$AV, digits = 0)
+
+dalt_con_dens <- treat_dens %>%
+  filter(SITE == "DALTON") %>%
+  filter(DIV == "c")
+
+stee_con_dens <- treat_dens %>%
+  filter(SITE == "STEESE") %>%
+  filter(DIV == "c")
+
+dalt_dec_dens <- treat_dens %>%
+  filter(SITE == "DALTON") %>%
+  filter(DIV == "d")
+
+stee_dec_dens <- treat_dens %>%
+  filter(SITE == "STEESE") %>%
+  filter(DIV == "d")
