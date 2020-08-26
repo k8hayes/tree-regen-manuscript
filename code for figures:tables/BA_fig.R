@@ -16,7 +16,7 @@ ba %>%
   ggplot(aes(x = as.factor(TREAT), y = BA_ha, fill = DIV)) + 
   geom_boxplot() + facet_wrap(~SITE) + ylim(0,0.35) + 
   labs(x = "Number of Fires", y = "Basal Area (m2/ha)", 
-       title = "Total Basal Area in Burned Plots") + 
+       title = "Basal Area in Burned Plots") + 
   scale_fill_manual(values = c("#f0f0f0", "#bdbdbd"),
                      name = "Division",
                      labels = c("Conifer", "Deciduous"))
