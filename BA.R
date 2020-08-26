@@ -36,27 +36,34 @@ dalton <- dalton %>%
   dalton$DIV[dalton$SPP == "SALIX"] <- "d"
   dalton$DIV[dalton$SPP == "ARCTO"] <- "d"
   dalton$DIV[dalton$SPP == "ALCR"] <- "d"
-
+  
+# adding expansion factor  
+  dalton$QUAD[dalton$QUAD == 2] <- 50	#assuming a plot is 1/25 of a ha, so half a plot is 1/50 of a ha.
+  dalton$QUAD[dalton$QUAD == 1] <- 100
+  dalton$QUAD[dalton$QUAD == .2] <- 500
+  
 # calculating ba
-  dalton$BA_unscale <- 0.005454*(dalton$DBH^2) 
-  # scaling ba
-    dalton$BA <- dalton$BA_unscale
-
-    unique(dalton$PLOT[dalton$QUAD ==1]) # 44_0 28_1
-    dalton$BA[dalton$PLOT == "28_1"] <- dalton$BA[dalton$PLOT == "28_1"]*2
-    dalton$BA[dalton$PLOT == "44_0"] <- dalton$BA[dalton$PLOT == "44_0"]*2
-
-    unique(dalton$PLOT[dalton$QUAD == 0.2]) # 15_3
-    dalton$BA[dalton$PLOT == "15_3"] <- dalton$BA[dalton$PLOT == "15_3"]*10
+    dalton$BA_unscale <- (pi * (dalton$DBH/2)^2)/10000 	#convert to ba and cm2 to m2. Just pi*r2
+    dalton$BA_ha <- dalton$BA_unscale* dalton$QUAD		#multiply by expansion factor 
     
-    unique(dalton$PLOT[dalton$QUAD == 0.1]) # 15_3 12_1 50_1 
-    dalton$BA[dalton$PLOT == "12_1"] <- dalton$BA[dalton$PLOT == "12_1"]*20
-    dalton$BA[dalton$PLOT == "50_1"] <- dalton$BA[dalton$PLOT == "50_1"]*20
+  # # scaling ba
+  #   dalton$BA <- dalton$BA_unscale
+  # 
+  #   unique(dalton$PLOT[dalton$QUAD ==1]) # 44_0 28_1
+  #   dalton$BA[dalton$PLOT == "28_1"] <- dalton$BA[dalton$PLOT == "28_1"]*2
+  #   dalton$BA[dalton$PLOT == "44_0"] <- dalton$BA[dalton$PLOT == "44_0"]*2
+  # 
+  #   unique(dalton$PLOT[dalton$QUAD == 0.2]) # 15_3
+  #   dalton$BA[dalton$PLOT == "15_3"] <- dalton$BA[dalton$PLOT == "15_3"]*10
+  #   
+  #   unique(dalton$PLOT[dalton$QUAD == 0.1]) # 15_3 12_1 50_1 
+  #   dalton$BA[dalton$PLOT == "12_1"] <- dalton$BA[dalton$PLOT == "12_1"]*20
+  #   dalton$BA[dalton$PLOT == "50_1"] <- dalton$BA[dalton$PLOT == "50_1"]*20
 
-    # summing according to species
-    dalton_ba <- dalton %>%
-      group_by(SITE, TREAT, PLOT, DIV, SPP) %>%
-      summarise(BA_SUM = sum(BA))
+    # # summing according to species
+     dalton_ba <- dalton %>%
+       group_by(SITE, TREAT, PLOT, DIV, SPP) %>%
+       summarise(BA_SUM = sum(BA_ha))
 
 steese <- read.csv(here("data/Steese_DBH.csv"), stringsAsFactors = F)   
 
@@ -82,30 +89,35 @@ steese <- read.csv(here("data/Steese_DBH.csv"), stringsAsFactors = F)
       filter(CANOPY > 0)
 
 # calculating ba
-    steese$BA_unscale <- 0.005454*(steese$DBH^2) 
-    # scaling ba
-    steese$BA <- steese$BA_unscale
-    
-    unique(steese$PLOT[steese$QUAD ==1]) # "33_1" "18_1" "4_2"  "19_2" "28_1" "1_0"  "31_0" "6_0"  "9_0" 
-    steese$BA[steese$PLOT == "33_1"] <- steese$BA[steese$PLOT == "33_1"]*2
-    steese$BA[steese$PLOT == "18_1"] <- steese$BA[steese$PLOT == "18_1"]*2
-    steese$BA[steese$PLOT == "4_2"] <- steese$BA[steese$PLOT == "4_2"]*2
-    steese$BA[steese$PLOT == "19_2"] <- steese$BA[steese$PLOT == "19_2"]*2
-    steese$BA[steese$PLOT == "28_1"] <- steese$BA[steese$PLOT == "28_1"]*2
-    steese$BA[steese$PLOT == "6_0"] <- steese$BA[steese$PLOT == "6_0"]*2
-    steese$BA[steese$PLOT == "1_0"] <- steese$BA[steese$PLOT == "1_0"]*2
-    steese$BA[steese$PLOT == "31_0"] <- steese$BA[steese$PLOT == "31_0"]*2
-    steese$BA[steese$PLOT == "9_0"] <- steese$BA[steese$PLOT == "9_0"]*2
-    
-    # summing according to species
-    steese_ba <- steese %>%
-      group_by(SITE, TREAT, PLOT, DIV, SPP) %>%
-      summarise(BA_SUM = sum(BA))
+    # adding expansion factor  
+    steese$QUAD[steese$QUAD == 2] <- 50	#assuming a plot is 1/25 of a ha, so half a plot is 1/50 of a ha.
+    steese$QUAD[steese$QUAD == 1] <- 100
 
-species_ba <- rbind(dalton_ba, steese_ba)
-species_ba$BA_HA <- species_ba$BA_SUM*50
-species_ba$BA_PLOT <- species_ba$BA_SUM + species_ba$BA_SUM
-write.csv(species_ba, "species_ba.csv", row.names = F)
+    # calculating ba
+    steese$BA_unscale <- (pi * (steese$DBH/2)^2)/10000 	#convert to ba and cm2 to m2. Just pi*r2
+    steese$BA_ha <- steese$BA_unscale* steese$QUAD
+    
+    # # scaling ba
+    # steese$BA <- steese$BA_unscale
+    # 
+    # unique(steese$PLOT[steese$QUAD ==1]) # "33_1" "18_1" "4_2"  "19_2" "28_1" "1_0"  "31_0" "6_0"  "9_0" 
+    # steese$BA[steese$PLOT == "33_1"] <- steese$BA[steese$PLOT == "33_1"]*2
+    # steese$BA[steese$PLOT == "18_1"] <- steese$BA[steese$PLOT == "18_1"]*2
+    # steese$BA[steese$PLOT == "4_2"] <- steese$BA[steese$PLOT == "4_2"]*2
+    # steese$BA[steese$PLOT == "19_2"] <- steese$BA[steese$PLOT == "19_2"]*2
+    # steese$BA[steese$PLOT == "28_1"] <- steese$BA[steese$PLOT == "28_1"]*2
+    # steese$BA[steese$PLOT == "6_0"] <- steese$BA[steese$PLOT == "6_0"]*2
+    # steese$BA[steese$PLOT == "1_0"] <- steese$BA[steese$PLOT == "1_0"]*2
+    # steese$BA[steese$PLOT == "31_0"] <- steese$BA[steese$PLOT == "31_0"]*2
+    # steese$BA[steese$PLOT == "9_0"] <- steese$BA[steese$PLOT == "9_0"]*2
+    # 
+     # summing according to species
+     steese_ba <- steese %>%
+       group_by(SITE, TREAT, PLOT, DIV, SPP) %>%
+       summarise(BA_SUM = sum(BA_ha))
+
+ species_ba <- rbind(dalton_ba, steese_ba)
+ write.csv(species_ba, "species_ba.csv", row.names = F)
 
 
 # also writing full data file for modeling 
@@ -118,10 +130,10 @@ species_ba <- read_csv(here("species_ba.csv"))
 
 treat_ba <- species_ba %>%
   group_by(SITE, TREAT, DIV) %>%
-  summarise(AV = mean(BA_HA), SE = se(BA_HA))
+  summarise(AV = mean(BA_SUM), SE = se(BA_SUM))
 
-treat_ba$SE <- round(treat_ba$SE, digits = 0)
-treat_ba$AV <- round(treat_ba$AV, digits = 0)
+treat_ba$SE <- round(treat_ba$SE, digits = 1)
+treat_ba$AV <- round(treat_ba$AV, digits = 1)
 
 dalt_con_ba <- treat_ba %>%
   filter(SITE == "DALTON") %>%
@@ -138,4 +150,3 @@ dalt_dec_ba <- treat_ba %>%
 stee_dec_ba <- treat_ba %>%
   filter(SITE == "STEESE") %>%
   filter(DIV == "d")
-
