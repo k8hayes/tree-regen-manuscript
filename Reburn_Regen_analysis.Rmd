@@ -1,0 +1,94 @@
+---
+title: "Reburns_Regen_analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(cowplot)
+library(here)
+theme_set(theme_cowplot())
+options(scipen = 9999)
+se <- function(x) sqrt(var(x)/length(x))
+```
+
+## R Markdown
+
+
+## Including Plots
+
+
+```{r data clean up}
+dbh <- read.csv(here("data/dbh_raw.csv"))
+
+  # merging salix
+  dbh$SPP[dbh$SPP == "SAGL"] <- "SALIX"
+  dbh$SPP[dbh$SPP == "SA_3"] <- "SALIX"
+  dbh$SPP[dbh$SPP == "SA_4"] <- "SALIX"
+  dbh$SPP[dbh$SPP == "SA_5"] <- "SALIX"
+  dbh$SPP[dbh$SPP == "SA_6"] <- "SALIX"
+  dbh$SPP[dbh$SPP == "SA_7"] <- "SALIX"
+  dbh$SPP[dbh$SPP == "SA_8"] <- "SALIX"
+  dbh$SPP[dbh$SPP == "SA_?"] <- "SALIX"
+  dbh$SPP[dbh$SPP == "SADE"] <- "SALIX"
+  dbh$SPP[dbh$SPP == "SAPU"] <- "SALIX"
+  dbh$SPP[dbh$SPP == "SAGL_R"] <- "SALIX"
+  
+   # dropping unknown
+     dbh <- dbh %>%
+       filter(SPP != "UNKNOWN")
+  
+ # adding conifer and deciduous divisons
+    dbh$DIV[dbh$SPP == "PIME"] <- "c"
+    dbh$DIV[dbh$SPP == "BENE"] <- "d"
+    dbh$DIV[dbh$SPP == "POTR"] <- "d"
+    dbh$DIV[dbh$SPP == "POBA"] <- "d"
+    dbh$DIV[dbh$SPP == "SALIX"] <- "d"
+    dbh$DIV[dbh$SPP == "ARCTO"] <- "d"
+    dbh$DIV[dbh$SPP == "ALCR"] <- "d"
+
+# adding expansion factors
+    # assuming a plot is 1/25 of a ha, so half a plot is 1/50 of a ha.
+  dbh$EXP_FACT[dbh$QUAD == 2] <- 50
+  dbh$EXP_FACT[dbh$QUAD == 1] <- 100
+  dbh$EXP_FACT[dbh$QUAD == .1] <- 1000
+  dbh$EXP_FACT[dbh$QUAD == .2] <- 500
+
+ write.csv(dbh, here("data/dbh.csv"), row.names = F)
+```
+
+```{r}
+dbh <- read.csv(here("data/dbh.csv"))
+dbh$TREAT <- as.factor(dbh$TREAT)
+  # dropping dead trees
+    dbh <- dbh %>%
+      filter(CANOPY > 0)
+  # summing according to species
+  dens <- dbh %>%
+    group_by(SITE, TREAT, PLOT, SPP) %>%
+    summarise(COUNT_PLOT = n()) %>%
+    ungroup() %>%
+    group_by(SITE, TREAT,PLOT) %>%
+    complete( SPP, fill = list(COUNT_PLOT = 0))
+  
+  # adding divisions back in
+    dens$DIV[dens$SPP == "PIME"] <- "c"
+    dens$DIV[dens$SPP == "BENE"] <- "d"
+    dens$DIV[dens$SPP == "POTR"] <- "d"
+    dens$DIV[dens$SPP == "POBA"] <- "d"
+    dens$DIV[dens$SPP == "SALIX"] <- "d"
+    dens$DIV[dens$SPP == "ARCTO"] <- "d"
+    dens$DIV[dens$SPP == "ALCR"] <- "d"
+    
+  # adding expansion factor back
+    test <- dbh %>%
+    group_by(SITE, TREAT, PLOT) %>%
+    summarise(EXP_FACT = max(EXP_FACT)) %>%
+      slice(rep(1:n(), each = 7))
+  
+    dens$EXP_FACT <- test$EXP_FACT
+
+# scaling up
+    dens$COUNT_ha <- dens$COUNT_PLOT * dens$EXP_FACT
+```
+
