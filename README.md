@@ -1,7 +1,5 @@
 # tree-regen-manuscript
  
-8/19/20 - adding Brian's edit ("working_BB_August18.R") to model code, removing individual negative binomial / poisson files 
-                - sorted out outdated files into the "not used" folder
-                - deleted figures no longer using
-                - replicated brian's edits for deciduous density
-                - split basal area into second file ("testing_distributions_ba.R")
+This repository contains data used in the statistical analyses of the paper "Effects of short-interval disturbances continue to accumulate, overwhelming variability in local resilience" by Hayes and Buma, currently under review. 
+
+The data has been made available for reproducibility purposes. Please do not share these data without permission of Katherine Hayes, the lead author. 
