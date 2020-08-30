@@ -12,19 +12,19 @@ library(cowplot); theme_set(theme_cowplot())
 ##  density
 
 # bringing in data
-species_dens <- read.csv(("species_dens.csv"))
+dens <- read.csv(here("data/density.csv"))
 
 # removing unburned sites
-species_dens <- species_dens[species_dens$TREAT !=0,]
+dens <- dens[dens$TREAT !=0,]
 
 # looking at format of data, first three rows
-species_dens[1:3,]
+dens[1:3,]
 
 #############################
 ## conifer density
 
   #Different way of subsetting, base R  
-  CONIF_dens <- subset(species_dens, species_dens$DIV == "c")
+  CONIF_dens <- subset(dens, dens$DIV == "c")
 
   #the plots are duplicated with one entry per conifer species, so this reduces it to one value per plot
   cnt <- aggregate(CONIF_dens$COUNT_HA, list(CONIF_dens$PLOT), FUN = sum)  	#adds up the count per ha for each row within a plot
@@ -33,10 +33,10 @@ species_dens[1:3,]
   
   temp <- merge(x=CONIF_dens_new, y=CONIF_dens, by.x="Group.1", by.y="PLOT", all.x=F, all.y=F)	#adding in the site in a clumsy way but it was quick
   CONIF_dens_new <- temp[duplicated(temp[,1]),]					#merging and removing
-  CONIF_dens_new <- CONIF_dens_new[,1:4]						#remove extra columns
-  
-  names(CONIF_dens_new) <- c("PLOT","COUNT","TREAT", "SITE")			#get names back in there
-  CONIF_dens <- CONIF_dens_new								#back to original name so code below works
+  CONIF_dens <- CONIF_dens_new %>%	
+    rename(PLOT = Group.1, COUNT = x) %>% # renaming columns
+    dplyr::select(SITE, TREAT, PLOT, COUNT, SLOPE, ELEV, SOLAR) # selecting only the things we'll use
+  hist(CONIF_dens$COUNT)									#check
   hist(CONIF_dens$COUNT)									#check
   
   mC_D.nb <- 	glm.nb(COUNT ~ TREAT + SITE + (TREAT*SITE), link = log, data = CONIF_dens) 
@@ -67,17 +67,52 @@ species_dens[1:3,]
   plot(predict(mC_D.nb, type="response",se.fit=T)$fit, predict(mC_D.nb, type="response",se.fit=T)$se.fit, ylab="SE", xlab="Prediction")
   abline(0,1, col="red")
   
-  #Now, you could start bringing in other covariates, but that's generally not been your aim with this particular
-  #investigation, correct?
-
-  #to do so, you would add them into the glm above, but then check the diagnostics again of course
+  #bringing in other covariates
+  #adding them into the glm above
+  mC_D.nb <- 	glm.nb(COUNT ~ TREAT + SITE + (TREAT*SITE), link = log, data = CONIF_dens)
+  mC_D.nb.solar <- 	glm.nb(COUNT ~ TREAT + SITE  +  SOLAR + (TREAT*SITE),link = log, data = CONIF_dens)
+  mC_D.nb.elev <- 	glm.nb(COUNT ~ TREAT + SITE  + ELEV + (TREAT*SITE), link = log, data = CONIF_dens)
+  mC_D.nb.slope <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE  + (TREAT*SITE),link = log, data = CONIF_dens)
+  mC_D.nb.all <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE + ELEV + SOLAR + (TREAT*SITE),link = log,
+                         data = CONIF_dens)
+  
+  par(mfrow=c(5,4))
+  plot(mC_D.nb, main="NB")
+  plot(mC_D.nb.slope, main="Slope")
+  plot(mC_D.nb.solar, main= "Solar")
+  plot(mC_D.nb.elev, main="Elevation")
+  plot(mC_D.nb.all, main = "All")
+  
+  sqrt(mean(mC_D.nb$residuals^2))
+  sqrt(mean(mC_D.nb.slope$residuals^2))
+  sqrt(mean(mC_D.nb.elev$residuals^2))
+  sqrt(mean(mC_D.nb.solar$residuals^2)) # solar radiation just barely performs best
+  sqrt(mean(mC_D.nb.all$residuals^2)) 
+  
+  # what about combining solar and slope or solar and elevation?
+  mC_D.nb.solar.slope <- 	glm.nb(COUNT ~ TREAT + SITE  + SOLAR + SLOPE + (TREAT*SITE),link = log, data = CONIF_dens)
+  mC_D.nb.solar.elev <- 	glm.nb(COUNT ~ TREAT + SITE  + ELEV + SOLAR + (TREAT*SITE), link = log, data = CONIF_dens)
+  
+  sqrt(mean(mC_D.nb$residuals^2))
+  sqrt(mean(mC_D.nb.solar$residuals^2)) 
+  sqrt(mean(mC_D.nb.solar.slope$residuals^2)) 
+  sqrt(mean(mC_D.nb.solar.elev$residuals^2))
+  sqrt(mean(mC_D.nb.all$residuals^2)) 
+  
+  summary(mC_D.nb.all)
+  summary(mC_D.nb)
+  summary(mC_D.nb.solar)
+  summary(mC_D.nb.solar.elev)
+  summary(mC_D.nb.solar.slope)
+  
+  model_parameters(mC_D.nb.solar)
 
 ######################################
 ## deciduous density
 ##
 
   # Different way of subsetting, base R  
-  DECID_dens <- subset(species_dens, species_dens$DIV == "d")
+  DECID_dens <- subset(dens, dens$DIV == "d")
 
   # the plots are duplicated with one entry per species, so this reduces it to one value per plot
   cnt <- aggregate(DECID_dens$COUNT_HA, list(DECID_dens$PLOT), FUN = sum)  	#adds up the count per ha for each row within a plot
@@ -89,12 +124,11 @@ species_dens[1:3,]
   temp3 <- temp2[duplicated(temp2[,1]),]        # have to loop through, since there's so many more species
   temp4 <- temp3[duplicated(temp3[,1]),]        # absolutely sure there's a faster way to do this, just wanted to get it done
   temp5 <- temp4[duplicated(temp4[,1]),]
-  DECID_dens_new <- temp5[duplicated(temp5[,1]),]
-  DECID_dens_new <- DECID_dens_new[,1:4]						#remove extra columns
+  DECID_dens_new <- temp5[duplicated(temp5[,1]),]				
   rm(temp,temp2, temp3, temp4, temp5, cnt, trt) 				# cleaning up workspace
-  
-  names(DECID_dens_new) <- c("PLOT","COUNT","TREAT", "SITE")			#get names back in there
-  DECID_dens <- DECID_dens_new								#back to original name so code below works
+  DECID_dens <- DECID_dens_new %>%	
+    rename(PLOT = Group.1, COUNT = x) %>% # renaming columns
+    dplyr::select(SITE, TREAT, PLOT, COUNT, SLOPE, ELEV, SOLAR) # selecting only the things we'll use							#back to original name so code below works
   hist(DECID_dens$COUNT)									#check
   
   mD_D.nb <- 	glm.nb(COUNT ~ TREAT + SITE + (TREAT*SITE), link = log, data = DECID_dens) 
@@ -121,9 +155,37 @@ species_dens[1:3,]
   plot(predict(mD_D.nb, type="response",se.fit=T)$fit, 
        predict(mD_D.nb, type="response",se.fit=T)$se.fit, ylab="SE", xlab="Prediction")
 
+  #bringing in other covariates
+  #adding them into the glm above
+  mD_D.nb <- 	glm.nb(COUNT ~ TREAT + SITE + (TREAT*SITE), link = log, data = DECID_dens)
+  mD_D.nb.solar <- 	glm.nb(COUNT ~ TREAT + SITE  +  SOLAR + (TREAT*SITE),link = log, data = DECID_dens)
+  mD_D.nb.elev <- 	glm.nb(COUNT ~ TREAT + SITE  + ELEV + (TREAT*SITE), link = log, data = DECID_dens)
+  mD_D.nb.slope <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE  + (TREAT*SITE),link = log, data = DECID_dens)
+  mD_D.nb.all <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE + ELEV + SOLAR + (TREAT*SITE),link = log,
+                         data = DECID_dens)
+  
+  par(mfrow=c(5,4))
+  plot(mD_D.nb, main="NB")
+  plot(mD_D.nb.slope, main="Slope")
+  plot(mD_D.nb.solar, main= "Solar")
+  plot(mD_D.nb.elev, main="Elevation")
+  plot(mD_D.nb.all, main = "All")
+  
+  sqrt(mean(mD_D.nb$residuals^2))
+  sqrt(mean(mD_D.nb.slope$residuals^2)) # slightly worse than base model
+  sqrt(mean(mD_D.nb.elev$residuals^2))
+  sqrt(mean(mD_D.nb.solar$residuals^2)) 
+  sqrt(mean(mD_D.nb.all$residuals^2)) # lowest
+  
+  summary(mD_D.nb.all)
+  summary(mD_D.nb)
+  summary(mD_D.nb.solar)
+  summary(mD_D.nb.elev)
+  summary(mD_D.nb.slope)
 
+  model_parameters(mD_D.nb.all)
 
-########################################### 
+  ########################################### 
 ## basal area
   
   # bringing in data
@@ -171,7 +233,21 @@ species_dens[1:3,]
   
   #histogram
   hist(DECID_BA$BA)
-  hist(log(DECID_BA$BA))	#log transforming
+  
+  # pulling in site attribute variables
+  attrib <- read.csv(here("data/site_attrib.csv"))
+  # no unburned
+  attrib <-attrib[attrib$TREAT != 0,]
+  
+  # getting order of sites in BA
+  order <- as.vector(DECID_BA$PLOT) # don't worry that its 42, remember this doesnt include unburned
+  attrib <- attrib %>%
+    group_by(SITE, TREAT) %>%
+    arrange(match(PLOT,order)) 
+  # adding in attributes to density file
+  DECID_BA$SLOPE <- attrib$SLOPE
+  DECID_BA$ELEV <- attrib$ELEVATION
+  DECID_BA$SOLAR <- attrib$SOLAR
  
   mD_BA.log <- lm(log(BA)  ~ TREAT + SITE + (TREAT*SITE), data = DECID_BA)						#models E[log(y)]
   mD_BA.ga <- glm(BA  ~ TREAT + SITE + (TREAT*SITE), family = gaussian(link = "log"), data = DECID_BA)	#models log[E(y)]
@@ -207,8 +283,6 @@ species_dens[1:3,]
   sqrt(mean(mD_BA.gamma$residuals^2))
   sqrt(mean(BA_logn$residuals^2))
 
-
-
   par(mfrow=c(1,4)	)
   plot(exp(predict(mD_BA.log)),DECID_BA$BA, main="logged LM")	#plots the exponentiated prediction back
   abline(0,1)
@@ -219,11 +293,32 @@ species_dens[1:3,]
   plot(BA_logn$fitted.values,DECID_BA$BA, main = "lognormal")	#plots the exponentiated prediction back
   abline(0,1)
 
+  # adding in covariates
+  mD_BA.gamma <- glm(BA  ~ TREAT + SITE + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
+  mD_BA.gamma.all <- glm(BA  ~ TREAT + SITE + SLOPE + SOLAR + ELEV + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
+  mD_BA.gamma.slope <- glm(BA  ~ TREAT + SITE + SLOPE + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
+  mD_BA.gamma.solar <- glm(BA  ~ TREAT + SITE + SOLAR + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
+  mD_BA.gamma.elev <- glm(BA  ~ TREAT + SITE + ELEV + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
+ 
+  par(mfrow=c(5,4))
+  plot(mD_BA.gamma, main= "Gamma")
+  plot(mD_BA.gamma.all, main="All covariates")
+  plot(mD_BA.gamma.slope, main="Slope")
+  plot(mD_BA.gamma.solar, main="Solar")
+  plot(mD_BA.gamma.elev, main="Elevation")
   
+  # Compare root mean squared error
+  sqrt(mean(mD_BA.gamma$residuals^2))
+  sqrt(mean(mD_BA.gamma.slope$residuals^2))
+  sqrt(mean(mD_BA.gamma.solar$residuals^2)) # nope
+  sqrt(mean(mD_BA.gamma.elev$residuals^2))
+  sqrt(mean(mD_BA.gamma.all$residuals^2)) # smallest so far
+  
+  # checking just slope/elevation
+  mD_BA.gamma.slope.elev <- glm(BA  ~ TREAT + SITE + SLOPE + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
+  sqrt(mean(mD_BA.gamma.slope.elev$residuals^2)) # not smaller than all
+  
+  summary(mD_BA.gamma.all)
 
-###  For more gamma 
-#Gea-Izquierdo, G. and Canellas, I., 2009. Analysis of holm oak intraspecific competition using Gamma regression. Forest Science, 55(4), pp.310-322.
-
-
-
-
+  model_parameters(mD_BA.gamma.all)    
+  
