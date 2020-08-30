@@ -72,6 +72,7 @@ dbh$TREAT <- as.factor(dbh$TREAT)
     complete( SPP, fill = list(COUNT_PLOT = 0))
   
   # adding divisions back in
+    dens$DIV <- NA
     dens$DIV[dens$SPP == "PIME"] <- "c"
     dens$DIV[dens$SPP == "BENE"] <- "d"
     dens$DIV[dens$SPP == "POTR"] <- "d"
@@ -84,11 +85,51 @@ dbh$TREAT <- as.factor(dbh$TREAT)
     test <- dbh %>%
     group_by(SITE, TREAT, PLOT) %>%
     summarise(EXP_FACT = max(EXP_FACT)) %>%
-      slice(rep(1:n(), each = 7))
+      slice(rep(1:n(), each = 7)) %>%
+      ungroup()
   
     dens$EXP_FACT <- test$EXP_FACT
 
 # scaling up
     dens$COUNT_ha <- dens$COUNT_PLOT * dens$EXP_FACT
+    
+    dens$DIV <- as.factor(dens$DIV)
+```
+
+```{r}
+seed <- read.csv(here("data/seedling_count_raw.csv"))
+
+# adding expansion factors
+  seed$EXP_FACT <- NA
+  seed$EXP_FACT[seed$M2 == 100] <- 100
+  seed$EXP_FACT[seed$M2 == 10] <- 1000
+  seed$EXP_FACT[seed$M2 == 20] <- 500
+  seed$EXP_FACT[seed$M2 == 9] <- (10000/9)
+  
+# scaling up
+  seed$COUNT_ha <- seed$EXP_FACT * seed$TOTAL_COUNT
+  
+# combining seedling and dbh
+  seed <- seed %>%
+    group_by(SITE, TREAT, PLOT) %>%
+    arrange(match(SPP, c("ALCR", "ARCTO", "BENE", "POBA", "POTR", "SALIX", "PIGL", "PIME")),
+            .by_group = T)
+
+  # creating PIGL rows 
+  test <- dens %>%
+    select(SITE, TREAT, PLOT, EXP_FACT) %>%
+    distinct()
+  test$SPP <- as.factor("PIGL")
+  test$COUNT_ha <- 0
+  test$COUNT_PLOT <- 0
+  test$DIV <- as.factor("c")
+  dens <- rbind(dens, test)
+  
+   dens <- dens %>%
+    group_by(SITE, TREAT, PLOT) %>%
+    arrange(match(SPP, c("ALCR", "ARCTO", "BENE", "POBA", "POTR", "SALIX", "PIGL", "PIME")),
+            .by_group = T) %>%
+     rename(TREE_COUNT_PLOT = COUNT_PLOT, TREE_COUNT_HA = COUNT_ha)
+  dens$SEED_COUNT_PLOT <- seed$TOTAL_COUNT
 ```
 
