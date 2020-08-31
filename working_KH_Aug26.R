@@ -1,12 +1,10 @@
 #  testing distributions
 library(tidyverse)
-library(sjPlot)
 library(MASS)
 library(here)
 library(parameters)
 library(logNormReg)
 library(cowplot); theme_set(theme_cowplot()) 
-
 
 ################################################
 ##  density
@@ -159,21 +157,21 @@ dens[1:3,]
   #adding them into the glm above
   mD_D.nb <- 	glm.nb(COUNT ~ TREAT + SITE + (TREAT*SITE), link = log, data = DECID_dens)
   mD_D.nb.solar <- 	glm.nb(COUNT ~ TREAT + SITE  +  SOLAR + (TREAT*SITE),link = log, data = DECID_dens)
-  mD_D.nb.elev <- 	glm.nb(COUNT ~ TREAT + SITE  + ELEV + (TREAT*SITE), link = log, data = DECID_dens)
+  # mD_D.nb.elev <- 	glm.nb(COUNT ~ TREAT + SITE  + ELEV + (TREAT*SITE), link = log, data = DECID_dens)
   mD_D.nb.slope <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE  + (TREAT*SITE),link = log, data = DECID_dens)
-  mD_D.nb.all <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE + ELEV + SOLAR + (TREAT*SITE),link = log,
+  mD_D.nb.all <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE + SOLAR + (TREAT*SITE),link = log,
                          data = DECID_dens)
   
-  par(mfrow=c(5,4))
+  par(mfrow=c(4,4))
   plot(mD_D.nb, main="NB")
   plot(mD_D.nb.slope, main="Slope")
   plot(mD_D.nb.solar, main= "Solar")
-  plot(mD_D.nb.elev, main="Elevation")
+  # plot(mD_D.nb.elev, main="Elevation")
   plot(mD_D.nb.all, main = "All")
   
   sqrt(mean(mD_D.nb$residuals^2))
   sqrt(mean(mD_D.nb.slope$residuals^2)) # slightly worse than base model
-  sqrt(mean(mD_D.nb.elev$residuals^2))
+  # sqrt(mean(mD_D.nb.elev$residuals^2))
   sqrt(mean(mD_D.nb.solar$residuals^2)) 
   sqrt(mean(mD_D.nb.all$residuals^2)) # lowest
   
@@ -295,30 +293,28 @@ dens[1:3,]
 
   # adding in covariates
   mD_BA.gamma <- glm(BA  ~ TREAT + SITE + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
-  mD_BA.gamma.all <- glm(BA  ~ TREAT + SITE + SLOPE + SOLAR + ELEV + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
+  mD_BA.gamma.all <- glm(BA  ~ TREAT + SITE + SLOPE + SOLAR + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
   mD_BA.gamma.slope <- glm(BA  ~ TREAT + SITE + SLOPE + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
   mD_BA.gamma.solar <- glm(BA  ~ TREAT + SITE + SOLAR + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
-  mD_BA.gamma.elev <- glm(BA  ~ TREAT + SITE + ELEV + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
+  # mD_BA.gamma.elev <- glm(BA  ~ TREAT + SITE + ELEV + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
  
-  par(mfrow=c(5,4))
+  par(mfrow=c(4,4))
   plot(mD_BA.gamma, main= "Gamma")
   plot(mD_BA.gamma.all, main="All covariates")
   plot(mD_BA.gamma.slope, main="Slope")
   plot(mD_BA.gamma.solar, main="Solar")
-  plot(mD_BA.gamma.elev, main="Elevation")
+  #plot(mD_BA.gamma.elev, main="Elevation")
   
   # Compare root mean squared error
   sqrt(mean(mD_BA.gamma$residuals^2))
   sqrt(mean(mD_BA.gamma.slope$residuals^2))
   sqrt(mean(mD_BA.gamma.solar$residuals^2)) # nope
-  sqrt(mean(mD_BA.gamma.elev$residuals^2))
+  # sqrt(mean(mD_BA.gamma.elev$residuals^2))
   sqrt(mean(mD_BA.gamma.all$residuals^2)) # smallest so far
   
-  # checking just slope/elevation
-  mD_BA.gamma.slope.elev <- glm(BA  ~ TREAT + SITE + SLOPE + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
-  sqrt(mean(mD_BA.gamma.slope.elev$residuals^2)) # not smaller than all
   
+  summary(mD_BA.gamma.slope)
   summary(mD_BA.gamma.all)
 
-  model_parameters(mD_BA.gamma.all)    
+  model_parameters(mD_BA.gamma.slope)    
   

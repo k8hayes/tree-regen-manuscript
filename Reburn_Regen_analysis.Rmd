@@ -17,17 +17,20 @@ library(parameters)
 library(logNormReg)
 ```
 
-## R Markdown
+# Effects of short-interval fires continue to accumulate, overwhelming the effects of local resiliency
 
+This file includes code used to clean up, organize and analyze data on regeneration density and basal area of reburned plots in Interior Alaska. Raw data files are saved as "_raw.csv", and as much work as possible is contained within the code itself. 
 
-## Density data set
+## Regeneration density
 
-Code cleans up DBH, adds division (conifer / deciduous) to species, adds expansion factors specific to each plot (both dbh and seedlings were counted across different subsamples for each plot, so scaling to ha is a bit more complicated).
+Density here is density of trees and seedlings on a scale of stems per hectare for each plot. 
+
+Code cleans up DBH, adds division (conifer / deciduous) to species, adds expansion factors specific to each plot (both dbh and seedlings were counted across different sub-samples for each plot, so scaling to ha is a bit more complicated).
 
 ```{r clean up of dbh data}
 # dbh <- read.csv(here("data/dbh_raw.csv"))
 # 
-#   # merging salix
+#   # merging salix # so many willows, so little time
 #   dbh$SPP[dbh$SPP == "SAGL"] <- "SALIX"
 #   dbh$SPP[dbh$SPP == "SA_3"] <- "SALIX"
 #   dbh$SPP[dbh$SPP == "SA_4"] <- "SALIX"
@@ -42,9 +45,9 @@ Code cleans up DBH, adds division (conifer / deciduous) to species, adds expansi
 #   
 #    # dropping unknown
 #      dbh <- dbh %>%
-#        filter(SPP != "UNKNOWN")
+#        filter(SPP != "UNKNOWN") # only a few unknown species present at Dalton site
 #   
-#  # adding conifer and deciduous divisons
+#  # adding conifer and deciduous divisions
 #     dbh$DIV[dbh$SPP == "PIME"] <- "c"
 #     dbh$DIV[dbh$SPP == "BENE"] <- "d"
 #     dbh$DIV[dbh$SPP == "POTR"] <- "d"
@@ -63,6 +66,8 @@ Code cleans up DBH, adds division (conifer / deciduous) to species, adds expansi
 #  write.csv(dbh, here("data/dbh.csv"), row.names = F)
 ```
 
+The next chunk brings in the altered dbh csv file, drops dead trees, sums the count of each species by plot and adds the division and expansion factors back in. The result is a file of densities of each plot according to species. 
+
 ```{r dbh sum, expansion factors and divisions}
 dbh <- read.csv(here("data/dbh.csv"))
 dbh$TREAT <- as.factor(dbh$TREAT)
@@ -74,8 +79,8 @@ dbh$TREAT <- as.factor(dbh$TREAT)
     group_by(SITE, TREAT, PLOT, SPP) %>%
     summarise(COUNT_PLOT = n()) %>%
     ungroup() %>%
-    group_by(SITE, TREAT,PLOT) %>%
-    complete( SPP, fill = list(COUNT_PLOT = 0))
+    group_by(SITE, TREAT,PLOT) %>% 
+    complete( SPP, fill = list(COUNT_PLOT = 0)) # adds zero-counts back in for species
   
   # adding divisions back in
     dens$DIV <- NA
@@ -86,21 +91,22 @@ dbh$TREAT <- as.factor(dbh$TREAT)
     dens$DIV[dens$SPP == "SALIX"] <- "d"
     dens$DIV[dens$SPP == "ARCTO"] <- "d"
     dens$DIV[dens$SPP == "ALCR"] <- "d"
+    dens$DIV <- as.factor(dens$DIV)
     
   # adding expansion factor back
     test <- dbh %>%
     group_by(SITE, TREAT, PLOT) %>%
     summarise(EXP_FACT = max(EXP_FACT)) %>%
-      slice(rep(1:n(), each = 7)) %>%
+      slice(rep(1:n(), each = 7)) %>% # 7 species at each plot, so each plot is 7 rows
       ungroup()
   
-    dens$EXP_FACT <- test$EXP_FACT
+    dens$EXP_FACT <- test$EXP_FACT # adding expansion factors back in
 
 # scaling up
-    dens$COUNT_ha <- dens$COUNT_PLOT * dens$EXP_FACT
-    
-    dens$DIV <- as.factor(dens$DIV)
+    dens$COUNT_ha <- dens$COUNT_PLOT * dens$EXP_FACT 
 ```
+
+The following code brings in the seedling data file, adds expansion factors specific to seedlings (since they were counted seperately from dbh), scales seedling counts to stems/ha and combines the files of species dbh density and species seedling density. No white spruce existed above dbh height at any of the plots, but some seedlings occurred, so I also add a row of zero counts for white spruce to each dbh plot. The result from the entire code chunk is a datafile ("density.csv") containing counts of seedlings and trees of each species for each plot, along with their respective expansion factors and counts per hectare. 
 
 ```{r seed sum, expansion fact, divisons and adding with dbh}
 seed <- read.csv(here("data/seedling_count_raw.csv"))
@@ -149,6 +155,8 @@ seed <- read.csv(here("data/seedling_count_raw.csv"))
   write.csv(dens, here("data/density.csv"), row.names = F)
 ```
 
+Finally, this last chunk brings in the values of slope, solar radiation and elevation of each site, to be used as fixed effects in the later model. 
+
 ```{r bringing in site attributes as covariates}
 dens <- read.csv(here("data/density.csv"))
 
@@ -158,21 +166,21 @@ dens <- read.csv(here("data/density.csv"))
     # looking at format of data, first three rows
     dens[1:3,]
 
-    # creating count of both trees and seedlings
+    # creating total count of both trees and seedlings
     dens$COUNT_HA <- dens$TREE_COUNT_HA + dens$SEED_COUNT_HA
     
 # pulling in site attribute variables
     attrib <- read.csv(here("data/site_attrib.csv"))
     
-    # no unburned
+    # no unburned sites used here
     attrib <-attrib[attrib$TREAT != 0,]
     
     # getting order of sites in dens
-    order <- as.vector(unique(dens$PLOT)) # don't worry that its 42, remember this doesnt include unburned
+    order <- as.vector(unique(dens$PLOT)) # don't worry that its 42, remember this doesn't include unburned sites
     attrib <- attrib %>%
       group_by(SITE, TREAT) %>%
-      arrange(match(PLOT,order)) %>%
-      slice(rep(1:n(), each = 8))
+      arrange(match(PLOT,order)) %>% # matches the same order of plots as density file
+      slice(rep(1:n(), each = 8)) # replicates each value by 8, since there's 8 rows per plot (8 species)
     # adding in attributes to density file
     dens$SLOPE <- attrib$SLOPE
     dens$ELEV <- attrib$ELEVATION
@@ -181,7 +189,9 @@ dens <- read.csv(here("data/density.csv"))
    write.csv(dens, here("data/density.csv"), row.names = F) 
 ```
 
-```{r analysis / distribution,}
+The piece of code that follows is the analysis of conifer density. The first half of the script uses base R to subset for just conifers, and then sums density of white and black spruce (the 2 conifers present at any site) before bringing the other variables back in. I checked the performance of negative binomial, poisson and quasipoisson distributions before deciding to go with the negative binomial, based on the fit of the residuals in the qq plot.I then added in slope and solar radiation as fixed effects, and re-checked the diagnostics. 
+
+```{r conifer density analysis}
 dens <- read.csv(here("data/density.csv"))
 
 #Different way of subsetting, base R  
@@ -214,7 +224,8 @@ dens <- read.csv(here("data/density.csv"))
   summary(mC_D_qp)
   summary(mC_D.nb)
   
-  model_parameters(mC_D.nb)
+  # used for confidence intervals
+  model_parameters(mC_D.nb) # results end up in table 1 of paper
   
   #note the prediction vs. observed isn't great, but that's not the point here
   plot(predict(mC_D.nb, type="response",se.fit=T)$fit,CONIF_dens$COUNT)	#plots the exponentiated prediction back
@@ -229,30 +240,31 @@ dens <- read.csv(here("data/density.csv"))
   
   #bringing in other covariates
 
-  #to do so, you would add them into the glm above, but then check the diagnostics again of course
+  #to do so, adding them into the glm above, but then check the diagnostics again of course
     mC_D.nb <- 	glm.nb(COUNT ~ TREAT + SITE + (TREAT*SITE), link = log, data = CONIF_dens)
-    mC_D.nb.solar <- 	glm.nb(COUNT ~ TREAT + SITE  +  SOLAR + (TREAT*SITE),link = log, data = CONIF_dens)
-    mC_D.nb.elev <- 	glm.nb(COUNT ~ TREAT + SITE  + ELEV + (TREAT*SITE), link = log, data = CONIF_dens)
-    mC_D.nb.slope <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE  + (TREAT*SITE),link = log, data = CONIF_dens)
-    mC_D.nb.all <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE + ELEV + SOLAR + (TREAT*SITE),link = log,
-                           data = CONIF_dens)
+    mC_D.nb.solar <- 	glm.nb(COUNT ~ TREAT + SITE  +  SOLAR + (TREAT*SITE),
+                             link = log, data = CONIF_dens)
+    mC_D.nb.slope <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE  + (TREAT*SITE),
+                             link = log, data = CONIF_dens)
+    mC_D.nb.all <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE + ELEV + SOLAR + (TREAT*SITE),
+                           link = log, data = CONIF_dens)
     
     par(mfrow=c(5,4))
     plot(mC_D.nb, main="NB")
     plot(mC_D.nb.slope, main="Slope")
     plot(mC_D.nb.solar, main= "Solar")
-    plot(mC_D.nb.elev, main="Elevation")
     plot(mC_D.nb.all, main = "All")
     
-    sqrt(mean(mC_D.nb$residuals^2))
+  sqrt(mean(mC_D.nb$residuals^2))
   sqrt(mean(mC_D.nb.slope$residuals^2))
-  sqrt(mean(mC_D.nb.elev$residuals^2))
   sqrt(mean(mC_D.nb.solar$residuals^2)) # solar radiation just barely performs best
   sqrt(mean(mC_D.nb.all$residuals^2)) 
   
   # what about combining solar and slope or solar and elevation?
-  mC_D.nb.solar.slope <- 	glm.nb(COUNT ~ TREAT + SITE  + SOLAR + SLOPE + (TREAT*SITE),link = log, data = CONIF_dens)
-  mC_D.nb.solar.elev <- 	glm.nb(COUNT ~ TREAT + SITE  + ELEV + SOLAR + (TREAT*SITE), link = log, data = CONIF_dens)
+  mC_D.nb.solar.slope <- 	glm.nb(COUNT ~ TREAT + SITE  + SOLAR + SLOPE + (TREAT*SITE),
+                                 link = log, data = CONIF_dens)
+  mC_D.nb.solar.elev <- 	glm.nb(COUNT ~ TREAT + SITE  + ELEV + SOLAR + (TREAT*SITE),
+                                link = log, data = CONIF_dens)
   
   sqrt(mean(mC_D.nb$residuals^2))
   sqrt(mean(mC_D.nb.solar$residuals^2)) 
@@ -266,6 +278,8 @@ dens <- read.csv(here("data/density.csv"))
   summary(mC_D.nb.solar.elev)
   summary(mC_D.nb.solar.slope)
 ```
+
+The next piece of code conducts the same process, but for deciduous density. 
 
 ```{r deciduous density analysis}
 # Different way of subsetting, base R  
@@ -345,6 +359,41 @@ dens <- read.csv(here("data/density.csv"))
   dev.off()
 ```
 
+
+Finally, the code below pulls out specific values of density used in the text of the manuscript. [NEED TO REDO]
+
+```{r density values for text}
+# getting values 
+species_dens <- read_csv(here("species_dens.csv"))
+
+treat_dens <- species_dens %>%
+  group_by(SITE, TREAT, DIV) %>%
+  summarise(AV = mean(COUNT_HA), SE = se(COUNT_HA))
+
+treat_dens$SE <- round(treat_dens$SE, digits = 0)
+treat_dens$AV <- round(treat_dens$AV, digits = 0)
+
+dalt_con_dens <- treat_dens %>%
+  filter(SITE == "DALTON") %>%
+  filter(DIV == "c")
+
+stee_con_dens <- treat_dens %>%
+  filter(SITE == "STEESE") %>%
+  filter(DIV == "c")
+
+dalt_dec_dens <- treat_dens %>%
+  filter(SITE == "DALTON") %>%
+  filter(DIV == "d")
+
+stee_dec_dens <- treat_dens %>%
+  filter(SITE == "STEESE") %>%
+  filter(DIV == "d")
+```
+
+## Basal area
+
+
+
 ```{r basal area bring in covariates}
 # bringing in data
   ba <- read.csv(("ba.csv"), stringsAsFactors = F)
@@ -401,5 +450,32 @@ dens <- read.csv(here("data/density.csv"))
     DECID_BA$SLOPE <- attrib$SLOPE
     DECID_BA$ELEV <- attrib$ELEVATION
     DECID_BA$SOLAR <- attrib$SOLAR
+```
+```{r basal area values for text}
+# getting values 
+species_ba <- read_csv(here("species_ba.csv"))
+
+treat_ba <- species_ba %>%
+  group_by(SITE, TREAT, DIV) %>%
+  summarise(AV = mean(BA_SUM), SE = se(BA_SUM))
+
+treat_ba$SE <- round(treat_ba$SE, digits = 1)
+treat_ba$AV <- round(treat_ba$AV, digits = 1)
+
+dalt_con_ba <- treat_ba %>%
+  filter(SITE == "DALTON") %>%
+  filter(DIV == "c")
+
+stee_con_ba <- treat_ba %>%
+  filter(SITE == "STEESE") %>%
+  filter(DIV == "c")
+
+dalt_dec_ba <- treat_ba %>%
+  filter(SITE == "DALTON") %>%
+  filter(DIV == "d")
+
+stee_dec_ba <- treat_ba %>%
+  filter(SITE == "STEESE") %>%
+  filter(DIV == "d")
 ```
 

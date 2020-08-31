@@ -1,4 +1,6 @@
 # fixing plot size
+# not all the values of subsample size of dbh were correct; this file corrects that issue quickly
+# shoudl not need to use
 library(here)
 library(tidyverse)
 
