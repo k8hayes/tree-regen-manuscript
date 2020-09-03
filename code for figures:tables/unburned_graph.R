@@ -6,23 +6,22 @@ theme_set(theme_cowplot())
 options(scipen = 9999)
 
 ba <- read.csv(here("ba.csv"))
-dens <- read.csv(here("species_dens.csv"))
+dens <- read.csv(here("data/density.csv"))
 
     # density plot
     conif_dens <- dens %>%
-      filter(TREAT ==0) %>%
+      filter(TREAT == 0) %>%
       filter(DIV == "c") %>%
       ggplot(aes(x = as.factor(SITE), y = COUNT_HA)) + geom_boxplot() +
       labs(x = " ",y = "Conifer Density", title = "Unburned Density (stem/ha)") +
-      theme(plot.title = element_text(hjust = 0)) + 
-      scale_x_discrete(labels = c("Upland", "Lowland"))
+      theme(plot.title = element_text(hjust = 0))
     
     # DECID density
     decid_dens <- dens %>%
-      filter(TREAT ==0) %>%
+      filter(TREAT == 0) %>%
       filter(DIV == "d") %>%
       ggplot(aes(x = as.factor(SITE), y = COUNT_HA)) + geom_boxplot() + 
-      labs(x = "",y = "Decid. Density", title = "")  + 
+      labs(x = "",y = "Decid. Density", title = "")  +
       scale_x_discrete(labels = c("Upland", "Lowland"))
     density <- plot_grid(conif_dens, decid_dens, nrow = 2)
     density
@@ -30,7 +29,8 @@ dens <- read.csv(here("species_dens.csv"))
   
 # basal area
   # CONIF basal area  
-    conif_ba <- ba %>%
+    #conif_ba <- 
+    ba %>%
       filter(TREAT == 0) %>%
       filter(DIV == "c") %>%
       ggplot(aes(x = as.factor(SITE), y = BA_ha)) + geom_boxplot() + 
@@ -38,11 +38,12 @@ dens <- read.csv(here("species_dens.csv"))
       theme(plot.title = element_text(hjust = 0)) + 
       scale_x_discrete(labels = c("Upland", "Lowland"))
     # DECID basal area
-    decid_ba <- ba %>%
+    # decid_ba <-
+      ba %>%
       filter(TREAT == 0) %>%
       filter(DIV == "d") %>%
       ggplot(aes(x = as.factor(SITE), y = BA_ha)) + geom_boxplot() + 
-      labs(x = "",y = "Decid. Basal Area", title = "")  + 
+      labs(x = "",y = "Decid. Basal Area", title = "")  + ylim(0, 0.5) +
       scale_x_discrete(labels = c("Upland", "Lowland"))
     ba <- plot_grid(conif_ba, decid_ba, nrow = 2)
     rm(conif_ba, decid_ba)
