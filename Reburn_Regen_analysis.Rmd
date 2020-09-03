@@ -166,33 +166,39 @@ dens <- read.csv(here("data/density.csv"))
     # looking at format of data, first three rows
     dens[1:3,]
 
+    # making sure number of fires is a factor
+    dens$TREAT <- as.factor(dens$TREAT)
+    
     # creating total count of both trees and seedlings
     dens$COUNT_HA <- dens$TREE_COUNT_HA + dens$SEED_COUNT_HA
     
-# pulling in site attribute variables
-    attrib <- read.csv(here("data/site_attrib.csv"))
-    
-    # no unburned sites used here
-    attrib <-attrib[attrib$TREAT != 0,]
-    
-    # getting order of sites in dens
-    order <- as.vector(unique(dens$PLOT)) # don't worry that its 42, remember this doesn't include unburned sites
-    attrib <- attrib %>%
-      group_by(SITE, TREAT) %>%
-      arrange(match(PLOT,order)) %>% # matches the same order of plots as density file
-      slice(rep(1:n(), each = 8)) # replicates each value by 8, since there's 8 rows per plot (8 species)
-    # adding in attributes to density file
-    dens$SLOPE <- attrib$SLOPE
-    dens$ELEV <- attrib$ELEVATION
-    dens$SOLAR <- attrib$SOLAR
-    
-   write.csv(dens, here("data/density.csv"), row.names = F) 
+# # pulling in site attribute variables
+#     attrib <- read.csv(here("data/site_attrib.csv"))
+#     
+#     # no unburned sites used here
+#     attrib <-attrib[attrib$TREAT != 0,]
+#     
+#     # getting order of sites in dens
+#     order <- as.vector(unique(dens$PLOT)) # don't worry that its 42, remember this doesn't include unburned sites
+#     attrib <- attrib %>%
+#       group_by(SITE, TREAT) %>%
+#       arrange(match(PLOT,order)) %>% # matches the same order of plots as density file
+#       slice(rep(1:n(), each = 8)) # replicates each value by 8, since there's 8 rows per plot (8 species)
+#     # adding in attributes to density file
+#     dens$SLOPE <- attrib$SLOPE
+#     dens$ELEV <- attrib$ELEVATION
+#     dens$SOLAR <- attrib$SOLAR
+#     
+#    write.csv(dens, here("data/density.csv"), row.names = F) 
 ```
 
 The piece of code that follows is the analysis of conifer density. The first half of the script uses base R to subset for just conifers, and then sums density of white and black spruce (the 2 conifers present at any site) before bringing the other variables back in. I checked the performance of negative binomial, poisson and quasipoisson distributions before deciding to go with the negative binomial, based on the fit of the residuals in the qq plot.I then added in slope and solar radiation as fixed effects, and re-checked the diagnostics. 
 
 ```{r conifer density analysis}
 dens <- read.csv(here("data/density.csv"))
+
+# making sure number of fires is a factor
+    dens$TREAT <- as.factor(dens$TREAT)
 
 #Different way of subsetting, base R  
   CONIF_dens <- subset(dens, dens$DIV == "c")

@@ -6,15 +6,18 @@ library(here)
 theme_set(theme_cowplot())
 options(scipen = 9999)
 
-species_dens <- read.csv(here("species_dens.csv"), stringsAsFactors = F)
+dens <- read.csv(here("data/density.csv"), stringsAsFactors = F)
 
-species_dens$SITE[species_dens$SITE == "DALTON"] <- "Upland"
-species_dens$SITE[species_dens$SITE == "STEESE"] <- "Lowland"
+dens$SITE[dens$SITE == "DALTON"] <- "Upland"
+dens$SITE[dens$SITE == "STEESE"] <- "Lowland"
 
-species_dens %>%
-  filter(TREAT != 0) %>%
+plot_dens <- dens %>%
+  group_by(SITE, TREAT, PLOT, DIV) %>%
+  summarise(COUNT_HA = mean(COUNT_HA)) 
+
+plot_dens %>%
   ggplot(aes(x = as.factor(TREAT), y = COUNT_HA, fill = DIV)) + 
-  geom_boxplot() + facet_wrap(~SITE)  + ylim(0, 200000) + 
+  geom_boxplot() + facet_wrap(~SITE) + ylim(0, 115000) + 
   labs(x = "Number of Fires", y = "Stems per Hectare", 
        title = "Density of Regeneration in Burned Plots") + 
   scale_fill_manual(values = c("#f0f0f0", "#bdbdbd"),
@@ -22,6 +25,10 @@ species_dens %>%
                     labels = c("Conifer", "Deciduous"))
 # export manually with 650 x 350, no aspect ratio
 # name = dens_fig.png
+
+
+#####################################
+## figures used in NSF proposal 
 
 willow_plot <- species_dens %>%
   filter(TREAT != 0) %>%
