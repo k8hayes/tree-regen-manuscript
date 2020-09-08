@@ -13,7 +13,6 @@ se <- function(x) sqrt(var(x)/length(x))
 
 library(sjPlot)
 library(MASS)
-library(parameters)
 library(logNormReg)
 ```
 
@@ -108,7 +107,7 @@ dbh$TREAT <- as.factor(dbh$TREAT)
     dens$COUNT_ha <- dens$COUNT_PLOT * dens$EXP_FACT 
 ```
 
-The following code brings in the seedling data file, adds expansion factors specific to seedlings (since they were counted seperately from dbh), scales seedling counts to stems/ha and combines the files of species dbh density and species seedling density. No white spruce existed above dbh height at any of the plots, but some seedlings occurred, so I also add a row of zero counts for white spruce to each dbh plot. The result from the entire code chunk is a datafile ("density.csv") containing counts of seedlings and trees of each species for each plot, along with their respective expansion factors and counts per hectare. 
+The following code brings in the seedling data file, adds expansion factors specific to seedlings (since they were counted separately from dbh), scales seedling counts to stems/ha and combines the files of species dbh density and species seedling density. No white spruce existed above dbh height at any of the plots, but some seedlings occurred, so I also add a row of zero counts for white spruce to each dbh plot. The result from the entire code chunk is a datafile ("density.csv") containing counts of seedlings and trees of each species for each plot, along with their respective expansion factors and counts per hectare. 
 
 ```{r seed sum, expansion fact, divisons and adding with dbh}
 seed <- read.csv(here("data/seedling_count_raw.csv"))
@@ -226,7 +225,7 @@ dens$TREAT <- as.factor(dens$TREAT)
   # parameters
   summary(mC_D)
   summary(mC_D_qp)
-  summary(mC_D.nb) # AIC 924.43
+  summary(mC_D.nb) # AIC 931
   
   #note the prediction vs. observed isn't great, but that's not the point here
   plot(predict(mC_D.nb, type="response",se.fit=T)$fit,CONIF_dens$COUNT)	#plots the exponentiated prediction back
@@ -243,41 +242,16 @@ dens$TREAT <- as.factor(dens$TREAT)
 
   #to do so, adding them into the glm above, but then check the diagnostics again of course
     mC_D.nb <- 	glm.nb(COUNT ~ TREAT + SITE + (TREAT*SITE), link = log, data = CONIF_dens)
-    mC_D.nb.solar <- 	glm.nb(COUNT ~ TREAT + SITE  +  SOLAR + (TREAT*SITE),
-                             link = log, data = CONIF_dens)
     mC_D.nb.slope <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE  + (TREAT*SITE),
                              link = log, data = CONIF_dens)
-    mC_D.nb.all <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE + SOLAR + (TREAT*SITE),
-                           link = log, data = CONIF_dens)
-    
-    par(mfrow=c(5,4))
+
+    par(mfrow=c(2,4))
     plot(mC_D.nb, main="NB")
     plot(mC_D.nb.slope, main="Slope")
-    plot(mC_D.nb.solar, main= "Solar")
-    plot(mC_D.nb.all, main = "All")
-    
-  sqrt(mean(mC_D.nb$residuals^2))
-  sqrt(mean(mC_D.nb.slope$residuals^2))
-  sqrt(mean(mC_D.nb.solar$residuals^2)) # solar radiation just barely performs best
-  sqrt(mean(mC_D.nb.all$residuals^2)) 
-  
-  # what about combining solar and slope or solar and elevation?
-  mC_D.nb.solar.slope <- 	glm.nb(COUNT ~ TREAT + SITE  + SOLAR + SLOPE + (TREAT*SITE),
-                                 link = log, data = CONIF_dens)
-  mC_D.nb.solar.elev <- 	glm.nb(COUNT ~ TREAT + SITE  + ELEV + SOLAR + (TREAT*SITE),
-                                link = log, data = CONIF_dens)
-  
-  sqrt(mean(mC_D.nb$residuals^2))
-  sqrt(mean(mC_D.nb.solar$residuals^2)) 
-  sqrt(mean(mC_D.nb.solar.slope$residuals^2)) 
-  sqrt(mean(mC_D.nb.solar.elev$residuals^2))
-  sqrt(mean(mC_D.nb.all$residuals^2)) 
-  
-  summary(mC_D.nb.all)
-  summary(mC_D.nb)
-  summary(mC_D.nb.solar)
-  summary(mC_D.nb.solar.elev)
-  summary(mC_D.nb.solar.slope)
+
+  summary(mC_D.nb) # AIC 931
+  summary(mC_D.nb.slope) # AIC 933
+
 ```
 
 The next piece of code conducts the same process, but for deciduous density. 
@@ -301,6 +275,7 @@ The next piece of code conducts the same process, but for deciduous density.
   DECID_dens <- DECID_dens_new %>%	
     rename(PLOT = Group.1, COUNT = x) %>% # renaming columns
     dplyr::select(SITE, TREAT, PLOT, COUNT, SLOPE, ELEV, SOLAR) # selecting only the things we'll use							#back to original name so code below works
+  dev.off()
   hist(DECID_dens$COUNT)									#check
   
   mD_D.nb <- 	glm.nb(COUNT ~ TREAT + SITE + (TREAT*SITE), link = log, data = DECID_dens) 
@@ -316,10 +291,7 @@ The next piece of code conducts the same process, but for deciduous density.
   # parameters
   summary(mD_D)
   summary(mD_D_qp)
-  summary(mD_D.nb)
-  
-  model_parameters(mD_D.nb)
-  
+  summary(mD_D.nb) # AIC 1085
   
   dev.off()
   plot(predict(mD_D.nb, type="response",se.fit=T)$fit,DECID_dens$COUNT)	#plots the exponentiated prediction back
@@ -331,18 +303,11 @@ The next piece of code conducts the same process, but for deciduous density.
   #bringing in other covariates
   #adding them into the glm above
   mD_D.nb <- 	glm.nb(COUNT ~ TREAT + SITE + (TREAT*SITE), link = log, data = DECID_dens)
-  mD_D.nb.solar <- 	glm.nb(COUNT ~ TREAT + SITE  +  SOLAR + (TREAT*SITE),link = log, data = DECID_dens)
-  mD_D.nb.elev <- 	glm.nb(COUNT ~ TREAT + SITE  + ELEV + (TREAT*SITE), link = log, data = DECID_dens)
   mD_D.nb.slope <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE  + (TREAT*SITE),link = log, data = DECID_dens)
-  mD_D.nb.all <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE + ELEV + SOLAR + (TREAT*SITE),link = log,
-                         data = DECID_dens)
   
   par(mfrow=c(5,4))
   plot(mD_D.nb, main="NB")
   plot(mD_D.nb.slope, main="Slope")
-  plot(mD_D.nb.solar, main= "Solar")
-  plot(mD_D.nb.elev, main="Elevation")
-  plot(mD_D.nb.all, main = "All")
   
   sqrt(mean(mD_D.nb$residuals^2))
   sqrt(mean(mD_D.nb.slope$residuals^2)) # slightly worse than base model
@@ -350,18 +315,14 @@ The next piece of code conducts the same process, but for deciduous density.
   sqrt(mean(mD_D.nb.solar$residuals^2)) 
   sqrt(mean(mD_D.nb.all$residuals^2)) # lowest
   
-  summary(mD_D.nb.all)
-  summary(mD_D.nb)
-  summary(mD_D.nb.solar)
-  summary(mD_D.nb.elev)
-  summary(mD_D.nb.slope)
 
-  model_parameters(mD_D.nb.all)
-  dev.off()
+  summary(mD_D.nb) # AIC 1085
+  summary(mD_D.nb.slope) # AIC 1087
+
 ```
 
 
-Finally, the code below pulls out specific values of density used in the text of the manuscript. [NEED TO REDO]
+Finally, the code below pulls out specific values of density used in the text of the manuscript. 
 
 ```{r density values for text}
 # getting values 
@@ -394,7 +355,6 @@ treat_dens %>%
 ## Basal area
 
 
-
 ```{r basal area bring in covariates}
 # bringing in data
   ba <- read.csv(("ba.csv"), stringsAsFactors = F)
@@ -407,10 +367,6 @@ treat_dens %>%
   
    DECID_BA <- subset(ba, ba$DIV == "d")
 
-  # expansion factor. Make sure this is correct if you stick with this value.  
-  # remember the expansion factor is the same as the inverse of the plot size relative to a ha,
-  # so a 400m2 plot is 1/25 of a ha, so the expansion factor is 25.  
-
   DECID_BA$QUAD[DECID_BA$QUAD == 2] <- 50	#assuming a plot is 1/25 of a ha, so half a plot is 1/50 of a ha.
   DECID_BA$QUAD[DECID_BA$QUAD == 1] <- 100
   DECID_BA$QUAD[DECID_BA$QUAD == .1] <- 1000
@@ -420,9 +376,9 @@ treat_dens %>%
   DECID_BA$BA <- (pi * (DECID_BA$DBH/2)^2)/10000	#convert to ba and cm2 to m2. Just pi*r2
   DECID_BA$BA_ha <- DECID_BA$BA * DECID_BA$QUAD		#multiply by expansion factor 
   
-
-  ba.plot <- aggregate(DECID_BA$BA_ha, list(DECID_BA$PLOT), FUN = sum)  	#adds up the count per ha for each row within a plot
-  ba.trt <- aggregate(DECID_BA$TREAT, list(DECID_BA$PLOT), FUN = mean)		#gets the treatment number (mean works because they are the same
+test <- DECID_BA %>%
+    group_by(SITE, TREAT, PLOT, DIV) %>%
+    summarise(BA = sum(BA_ha))
 
   DECID_ba_new <- cbind(ba.plot, ba.trt[,2])						#combines
   names(DECID_ba_new) <- c("PLOT","BA","TREAT")
