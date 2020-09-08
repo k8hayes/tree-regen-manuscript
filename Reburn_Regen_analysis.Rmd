@@ -70,7 +70,9 @@ The next chunk brings in the altered dbh csv file, drops dead trees, sums the co
 
 ```{r dbh sum, expansion factors and divisions}
 dbh <- read.csv(here("data/dbh.csv"))
+
 dbh$TREAT <- as.factor(dbh$TREAT)
+
   # dropping dead trees
     dbh <- dbh %>%
       filter(CANOPY > 0)
@@ -166,38 +168,37 @@ Finally, this last chunk brings in the values of slope, solar radiation and elev
 ```{r bringing in site attributes as covariates}
 dens <- read.csv(here("data/density.csv"))
 
+    # removing unburned sites
+    dens <- dens[dens$TREAT !=0,]
+    dens$TREAT <- as.factor(dens$TREAT)
+
     # looking at format of data, first three rows
     dens[1:3,]
     
-# # pulling in site attribute variables
-#     attrib <- read.csv(here("data/site_attrib.csv"))
-#     
-#     # no unburned sites used here
-#     attrib <-attrib[attrib$TREAT != 0,]
-#     
-#     # getting order of sites in dens
-#     order <- as.vector(unique(dens$PLOT)) # don't worry that its 42, remember this doesn't include unburned sites
-#     attrib <- attrib %>%
-#       group_by(SITE, TREAT) %>%
-#       arrange(match(PLOT,order)) %>% # matches the same order of plots as density file
-#       slice(rep(1:n(), each = 8)) # replicates each value by 8, since there's 8 rows per plot (8 species)
-#     # adding in attributes to density file
-#     dens$SLOPE <- attrib$SLOPE
-#     dens$ELEV <- attrib$ELEVATION
-#     dens$SOLAR <- attrib$SOLAR
-#     
-#    write.csv(dens, here("data/density.csv"), row.names = F) 
+# pulling in site attribute variables
+    attrib <- read.csv(here("data/site_attrib.csv"))
+
+    # no unburned sites used here
+    attrib <-attrib[attrib$TREAT != 0,]
+ 
+    # getting order of sites in dens
+    order <- as.vector(unique(dens$PLOT)) # don't worry that its 42, remember this doesn't include unburned sites
+    attrib <- attrib %>%
+      group_by(SITE, TREAT) %>%
+      arrange(match(PLOT,order)) %>% # matches the same order of plots as density file
+      slice(rep(1:n(), each = 8)) # replicates each value by 8, since there's 8 rows per plot (8 species)
+    # adding in attributes to density file
+    dens$SLOPE <- attrib$SLOPE
+    dens$ELEV <- attrib$ELEVATION
+    dens$SOLAR <- attrib$SOLAR
 ```
 
 The piece of code that follows is the analysis of conifer density. The first half of the script uses base R to subset for just conifers, and then sums density of white and black spruce (the 2 conifers present at any site) before bringing the other variables back in. I checked the performance of negative binomial, poisson and quasipoisson distributions before deciding to go with the negative binomial, based on the fit of the residuals in the qq plot.I then added in slope and solar radiation as fixed effects, and re-checked the diagnostics. 
 
 ```{r conifer density analysis}
-dens <- read.csv(here("data/density.csv"))
+dens$TREAT <- as.factor(dens$TREAT)
 
-    # removing unburned sites
-    dens <- dens[dens$TREAT !=0,]
-
-#Different way of subsetting, base R  
+# Different way of subsetting, base R  
   CONIF_dens <- subset(dens, dens$DIV == "c")
 
 #the plots are duplicated with one entry per conifer species, so this reduces it to one value per plot
@@ -225,10 +226,7 @@ dens <- read.csv(here("data/density.csv"))
   # parameters
   summary(mC_D)
   summary(mC_D_qp)
-  summary(mC_D.nb)
-  
-  # used for confidence intervals
-  model_parameters(mC_D.nb) # results end up in table 1 of paper
+  summary(mC_D.nb) # AIC 924.43
   
   #note the prediction vs. observed isn't great, but that's not the point here
   plot(predict(mC_D.nb, type="response",se.fit=T)$fit,CONIF_dens$COUNT)	#plots the exponentiated prediction back
@@ -249,7 +247,7 @@ dens <- read.csv(here("data/density.csv"))
                              link = log, data = CONIF_dens)
     mC_D.nb.slope <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE  + (TREAT*SITE),
                              link = log, data = CONIF_dens)
-    mC_D.nb.all <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE + ELEV + SOLAR + (TREAT*SITE),
+    mC_D.nb.all <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE + SOLAR + (TREAT*SITE),
                            link = log, data = CONIF_dens)
     
     par(mfrow=c(5,4))
@@ -367,16 +365,16 @@ Finally, the code below pulls out specific values of density used in the text of
 
 ```{r density values for text}
 # getting values 
-species_dens <- read_csv(here("species_dens.csv"))
+dens <- read.csv(here("data/density.csv"))
 
-treat_dens <- species_dens %>%
+treat_dens <- dens %>%
   group_by(SITE, TREAT, DIV) %>%
   summarise(AV = mean(COUNT_HA), SE = se(COUNT_HA))
 
 treat_dens$SE <- round(treat_dens$SE, digits = 0)
 treat_dens$AV <- round(treat_dens$AV, digits = 0)
 
-dalt_con_dens <- treat_dens %>%
+treat_dens %>%
   filter(SITE == "DALTON") %>%
   filter(DIV == "c")
 
@@ -384,11 +382,11 @@ stee_con_dens <- treat_dens %>%
   filter(SITE == "STEESE") %>%
   filter(DIV == "c")
 
-dalt_dec_dens <- treat_dens %>%
+treat_dens %>%
   filter(SITE == "DALTON") %>%
   filter(DIV == "d")
 
-stee_dec_dens <- treat_dens %>%
+treat_dens %>%
   filter(SITE == "STEESE") %>%
   filter(DIV == "d")
 ```
@@ -454,30 +452,21 @@ stee_dec_dens <- treat_dens %>%
     DECID_BA$ELEV <- attrib$ELEVATION
     DECID_BA$SOLAR <- attrib$SOLAR
 ```
+
+
 ```{r basal area values for text}
 # getting values 
-species_ba <- read_csv(here("species_ba.csv"))
+ba <- read_csv(here("ba.csv"))
 
-treat_ba <- species_ba %>%
+treat_ba <- ba %>%
   group_by(SITE, TREAT, DIV) %>%
-  summarise(AV = mean(BA_SUM), SE = se(BA_SUM))
+  summarise(AV = mean(BA_ha), SE = se(BA_ha))
 
-treat_ba$SE <- round(treat_ba$SE, digits = 1)
-treat_ba$AV <- round(treat_ba$AV, digits = 1)
-
-dalt_con_ba <- treat_ba %>%
-  filter(SITE == "DALTON") %>%
-  filter(DIV == "c")
-
-stee_con_ba <- treat_ba %>%
-  filter(SITE == "STEESE") %>%
-  filter(DIV == "c")
-
-dalt_dec_ba <- treat_ba %>%
+treat_ba %>%
   filter(SITE == "DALTON") %>%
   filter(DIV == "d")
 
-stee_dec_ba <- treat_ba %>%
+treat_ba %>%
   filter(SITE == "STEESE") %>%
   filter(DIV == "d")
 ```
