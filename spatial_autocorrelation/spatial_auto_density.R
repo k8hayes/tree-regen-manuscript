@@ -6,116 +6,118 @@ library(here)
 library(tidyverse)
 options(scipen = 9999)
 
+dens <- read.csv(here("data/density.csv"))
+
+# bringing in latitude and longitude
+  # pulling in site attribute variables
+  attrib <- read.csv(here("data/site_attrib.csv"))
+  
+  # getting order of sites in dens
+    order <- as.vector(unique(dens$PLOT)) 
+    attrib <- attrib %>%
+      group_by(SITE, TREAT) %>%
+      arrange(match(PLOT,order)) %>% # matches the same order of plots as density file
+      slice(rep(1:n(), each = 8)) # replicates each value by 8, since there's 8 rows per plot (8 species)
+
+  # adding in attributes to density file
+  dens$LAT <- attrib$LAT
+  dens$LONG <- attrib$LONG
+
 # DALTON
 # unburned
-  tree <- read.csv(here("tree regen manuscript/tree.csv"))
-  sapling <- read.csv(here("tree regen manuscript/sapling.csv"))
-  both <- rbind(tree, sapling) ; rm(tree, sapling)
-  both <- both[both$SITE == "DALTON",]
-  both <- both[both$TREAT == "0",]
-  
-  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+
+dalt_unb <- dens %>%
+  filter(SITE == "DALTON") %>%
+  filter(TREAT == 0)
+
+  regen.dist <- as.matrix(dist(cbind(dalt_unb$LONG, dalt_unb$LAT)))
   regen.dist.inv <- 1/regen.dist
   diag(regen.dist.inv) <-0
   regen.dist.inv[1:5, 1:5]
   
-  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(dalt_unb$COUNT_HA, regen.dist)
 
 # once-burned
-  tree <- read.csv(here("tree regen manuscript/tree.csv"))
-  sapling <- read.csv(here("tree regen manuscript/sapling.csv"))
-  both <- rbind(tree, sapling) ; rm(tree, sapling)
-  both <- both[both$SITE == "DALTON",]
-  both <- both[both$TREAT == "1",]
+  dalt1 <- dens %>%
+    filter(SITE == "DALTON") %>%
+    filter(TREAT == 1)
   
-  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+  regen.dist <- as.matrix(dist(cbind(dalt1$LONG, dalt1$LAT)))
   regen.dist.inv <- 1/regen.dist
   diag(regen.dist.inv) <-0
   regen.dist.inv[1:5, 1:5]
   
-  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(dalt1$COUNT_HA, regen.dist)
 
 # twice-burned
-  tree <- read.csv(here("tree regen manuscript/tree.csv"))
-  sapling <- read.csv(here("tree regen manuscript/sapling.csv"))
-  both <- rbind(tree, sapling) ; rm(tree, sapling)
-  both <- both[both$SITE == "DALTON",]
-  both <- both[both$TREAT == "2",]
+  dalt2 <- dens %>%
+    filter(SITE == "DALTON") %>%
+    filter(TREAT == 2)
   
-  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+  regen.dist <- as.matrix(dist(cbind(dalt2$LONG, dalt2$LAT)))
   regen.dist.inv <- 1/regen.dist
   diag(regen.dist.inv) <-0
   regen.dist.inv[1:5, 1:5]
   
-  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(dalt2$COUNT_HA, regen.dist)
 
 # thrice-burned
-  tree <- read.csv(here("tree regen manuscript/tree.csv"))
-  sapling <- read.csv(here("tree regen manuscript/sapling.csv"))
-  both <- rbind(tree, sapling) ; rm(tree, sapling)
-  both <- both[both$SITE == "DALTON",]
-  both <- both[both$TREAT == "3",]
+  dalt3 <- dens %>%
+    filter(SITE == "DALTON") %>%
+    filter(TREAT == 3)
   
-  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+  regen.dist <- as.matrix(dist(cbind(dalt3$LONG, dalt3$LAT)))
   regen.dist.inv <- 1/regen.dist
   diag(regen.dist.inv) <-0
   regen.dist.inv[1:5, 1:5]
   
-  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(dalt3$COUNT_HA, regen.dist)
 
 # STEESE
   # unburned
-  tree <- read.csv(here("tree regen manuscript/tree.csv"))
-  sapling <- read.csv(here("tree regen manuscript/sapling.csv"))
-  both <- rbind(tree, sapling) ; rm(tree, sapling)
-  both <- both[both$SITE == "STEESE",]
-  both <- both[both$TREAT == "0",]
+  stee0 <- dens %>%
+    filter(SITE == "STEESE") %>%
+    filter(TREAT == 0)
   
-  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+  regen.dist <- as.matrix(dist(cbind(stee0$LONG, stee0$LAT)))
   regen.dist.inv <- 1/regen.dist
   diag(regen.dist.inv) <-0
   regen.dist.inv[1:5, 1:5]
   
-  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(stee0$COUNT_HA, regen.dist)
   
   # once-burned
-  tree <- read.csv(here("tree regen manuscript/tree.csv"))
-  sapling <- read.csv(here("tree regen manuscript/sapling.csv"))
-  both <- rbind(tree, sapling) ; rm(tree, sapling)
-  both <- both[both$SITE == "STEESE",]
-  both <- both[both$TREAT == "1",]
+  stee1 <- dens %>%
+    filter(SITE == "STEESE") %>%
+    filter(TREAT == 1)
   
-  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+  regen.dist <- as.matrix(dist(cbind(stee1$LONG, stee1$LAT)))
   regen.dist.inv <- 1/regen.dist
   diag(regen.dist.inv) <-0
   regen.dist.inv[1:5, 1:5]
   
-  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(stee1$COUNT_HA, regen.dist)
   
   # twice-burned
-  tree <- read.csv(here("tree regen manuscript/tree.csv"))
-  sapling <- read.csv(here("tree regen manuscript/sapling.csv"))
-  both <- rbind(tree, sapling) ; rm(tree, sapling)
-  both <- both[both$SITE == "STEESE",]
-  both <- both[both$TREAT == "2",]
+  stee2 <- dens %>%
+    filter(SITE == "STEESE") %>%
+    filter(TREAT == 2)
   
-  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+  regen.dist <- as.matrix(dist(cbind(stee2$LONG, stee2$LAT)))
   regen.dist.inv <- 1/regen.dist
   diag(regen.dist.inv) <-0
   regen.dist.inv[1:5, 1:5]
   
-  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(stee2$COUNT_HA, regen.dist)
   
   # thrice-burned
-  tree <- read.csv(here("tree regen manuscript/tree.csv"))
-  sapling <- read.csv(here("tree regen manuscript/sapling.csv"))
-  both <- rbind(tree, sapling) ; rm(tree, sapling)
-  both <- both[both$SITE == "STEESE",]
-  both <- both[both$TREAT == "3",]
+  stee3 <- dens %>%
+    filter(SITE == "STEESE") %>%
+    filter(TREAT == 3)
   
-  regen.dist <- as.matrix(dist(cbind(both$LONG, both$LAT)))
+  regen.dist <- as.matrix(dist(cbind(stee3$LONG, stee3$LAT)))
   regen.dist.inv <- 1/regen.dist
   diag(regen.dist.inv) <-0
   regen.dist.inv[1:5, 1:5]
   
-  Moran.I(both$COUNT_HA, regen.dist)
+  Moran.I(stee3$COUNT_HA, regen.dist)

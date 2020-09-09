@@ -6,96 +6,114 @@ library(here)
 library(tidyverse)
 options(scipen = 9999)
 
-# putting long/lat into basal area
-    # spp_ba <- read.csv(here("tree regen manuscript/spp_ba.csv"))
-    # site_attributes <- read.csv(here("site_attributes.csv"), stringsAsFactors = F)  
-    # site <- site_attributes %>%
-      # group_by(site_attributes$SITE, site_attributes$FIRES,
-        #       site_attributes$SITECODE) %>%
-      #slice(rep(1:n(), each = 4))
-    #spp_ba$LAT <- site$LAT ; spp_ba$LONG <- site$LONG ; rm(site, site_attributes)
-    # write.csv(spp_ba, here("tree regen manuscript/spp_ba.csv"), row.names = F)
+ba <- read.csv(here("ba.csv"))
 
-ba <- read.csv(here("tree regen manuscript/spp_ba.csv"))
+plot_ba <- ba %>%
+  group_by(SITE,TREAT, PLOT) %>%
+  summarise(BA = sum(BA_ha))
 
+    # bringing in latitude and longitude
+    # pulling in site attribute variables
+    attrib <- read.csv(here("data/site_attrib.csv"))
+    
+    # getting order of sites in ba
+    order <- as.vector(unique(ba$PLOT)) 
+    attrib <- attrib %>%
+      group_by(SITE, TREAT) %>%
+      arrange(match(PLOT,order)) %>% # matches the same order of plots as baity file
+      slice(rep(1:n(), each = 1)) # replicates each value by 8, since there's 8 rows per plot (8 species)
+    
+    # adding in attributes to ba file
+    plot_ba$LAT <- attrib$LAT
+    plot_ba$LONG <- attrib$LONG
+    
 # DALTON
   # unburned
-    ba <- ba[ba$SITE == "DALTON",]
-    ba <- ba[ba$TREAT == "0",]
-    regen.dist <- as.matrix(dist(cbind(ba$LONG, ba$LAT)))
+    dalt0 <- plot_ba %>%
+      filter(SITE == "DALTON") %>%
+      filter(TREAT == 0)
+    
+    regen.dist <- as.matrix(dist(cbind(dalt0$LONG, dalt0$LAT)))
     regen.dist.inv <- 1/regen.dist
     diag(regen.dist.inv) <-0
     
-    Moran.I(ba$BA_DIV, regen.dist)
+    Moran.I(dalt0$BA, regen.dist)
 
   # once-burned
-    ba <- read.csv(here("tree regen manuscript/spp_ba.csv"))
-    ba <- ba[ba$SITE == "DALTON",]
-    ba <- ba[ba$TREAT == "1",]
-    regen.dist <- as.matrix(dist(cbind(ba$LONG, ba$LAT)))
+    dalt1 <- plot_ba %>%
+      filter(SITE == "DALTON") %>%
+      filter(TREAT == 1)
+    
+    regen.dist <- as.matrix(dist(cbind(dalt1$LONG, dalt1$LAT)))
     regen.dist.inv <- 1/regen.dist
     diag(regen.dist.inv) <-0
     
-    Moran.I(ba$BA_DIV, regen.dist)
+    Moran.I(dalt1$BA, regen.dist)
     
     # twice-burned
-    ba <- read.csv(here("tree regen manuscript/spp_ba.csv"))
-    ba <- ba[ba$SITE == "DALTON",]
-    ba <- ba[ba$TREAT == "2",]
-    regen.dist <- as.matrix(dist(cbind(ba$LONG, ba$LAT)))
+    dalt2 <- plot_ba %>%
+      filter(SITE == "DALTON") %>%
+      filter(TREAT == 2)
+    
+    regen.dist <- as.matrix(dist(cbind(dalt2$LONG, dalt2$LAT)))
     regen.dist.inv <- 1/regen.dist
     diag(regen.dist.inv) <-0
     
-    Moran.I(ba$BA_DIV, regen.dist)
+    Moran.I(dalt2$BA, regen.dist)
     
     # thrice-burned
-    ba <- read.csv(here("tree regen manuscript/spp_ba.csv"))
-    ba <- ba[ba$SITE == "DALTON",]
-    ba <- ba[ba$TREAT == "3",]
-    regen.dist <- as.matrix(dist(cbind(ba$LONG, ba$LAT)))
+    dalt3 <- plot_ba %>%
+      filter(SITE == "DALTON") %>%
+      filter(TREAT == 3)
+    
+    regen.dist <- as.matrix(dist(cbind(dalt3$LONG, dalt3$LAT)))
     regen.dist.inv <- 1/regen.dist
     diag(regen.dist.inv) <-0
     
-    Moran.I(ba$BA_DIV, regen.dist)
+    Moran.I(dalt3$BA, regen.dist)
 
 # STEESE
     # unburned
-    ba <- read.csv(here("tree regen manuscript/spp_ba.csv"))
-    ba <- ba[ba$SITE == "STEESE",]
-    ba <- ba[ba$TREAT == "0",]
-    regen.dist <- as.matrix(dist(cbind(ba$LONG, ba$LAT)))
+    stee0 <- plot_ba %>%
+      filter(SITE == "STEESE") %>%
+      filter(TREAT == 0)
+    
+    regen.dist <- as.matrix(dist(cbind(stee0$LONG, stee0$LAT)))
     regen.dist.inv <- 1/regen.dist
     diag(regen.dist.inv) <-0
     
-    Moran.I(ba$BA_DIV, regen.dist)
+    Moran.I(stee0$BA, regen.dist)
     
     # once-burned
-    ba <- read.csv(here("tree regen manuscript/spp_ba.csv"))
-    ba <- ba[ba$SITE == "STEESE",]
-    ba <- ba[ba$TREAT == "1",]
-    regen.dist <- as.matrix(dist(cbind(ba$LONG, ba$LAT)))
+    stee1 <- plot_ba %>%
+      filter(SITE == "STEESE") %>%
+      filter(TREAT == 1)
+    
+    regen.dist <- as.matrix(dist(cbind(stee1$LONG, stee1$LAT)))
     regen.dist.inv <- 1/regen.dist
     diag(regen.dist.inv) <-0
     
-    Moran.I(ba$BA_DIV, regen.dist)
+    Moran.I(stee1$BA, regen.dist)
     
     # twice-burned
-    ba <- read.csv(here("tree regen manuscript/spp_ba.csv"))
-    ba <- ba[ba$SITE == "STEESE",]
-    ba <- ba[ba$TREAT == "2",]
-    regen.dist <- as.matrix(dist(cbind(ba$LONG, ba$LAT)))
+    stee2 <- plot_ba %>%
+      filter(SITE == "STEESE") %>%
+      filter(TREAT == 2)
+    
+    regen.dist <- as.matrix(dist(cbind(stee2$LONG, stee2$LAT)))
     regen.dist.inv <- 1/regen.dist
     diag(regen.dist.inv) <-0
     
-    Moran.I(ba$BA_DIV, regen.dist)
+    Moran.I(stee2$BA, regen.dist)
     
     # thrice-burned
-    ba <- read.csv(here("tree regen manuscript/spp_ba.csv"))
-    ba <- ba[ba$SITE == "STEESE",]
-    ba <- ba[ba$TREAT == "3",]
-    regen.dist <- as.matrix(dist(cbind(ba$LONG, ba$LAT)))
+    stee3 <- plot_ba %>%
+      filter(SITE == "STEESE") %>%
+      filter(TREAT == 3)
+    
+    regen.dist <- as.matrix(dist(cbind(stee3$LONG, stee3$LAT)))
     regen.dist.inv <- 1/regen.dist
     diag(regen.dist.inv) <-0
     
-    Moran.I(ba$BA_DIV, regen.dist)
+    Moran.I(stee3$BA, regen.dist)
     
