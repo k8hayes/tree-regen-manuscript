@@ -1,6 +1,8 @@
 ---
 title: "Figure 7"
 output: html_notebook
+editor_options: 
+  chunk_output_type: inline
 ---
 
 # adventitious roots, organic layer and exposed mineral soil
