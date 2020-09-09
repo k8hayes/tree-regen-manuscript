@@ -159,14 +159,12 @@ seed <- read.csv(here("data/seedling_count_raw.csv"))
     # creating total count of both trees and seedlings
     dens$COUNT_HA <- dens$TREE_COUNT_HA + dens$SEED_COUNT_HA
     
-  write.csv(dens, here("data/density.csv"), row.names = F)
+ #  write.csv(dens, here("data/density.csv"), row.names = F)
 ```
 
 Finally, this last chunk brings in the values of slope, solar radiation and elevation of each site, to be used as fixed effects in the later model. 
 
 ```{r bringing in site attributes as covariates}
-dens <- read.csv(here("data/density.csv"))
-
     # removing unburned sites
     dens <- dens[dens$TREAT !=0,]
     dens$TREAT <- as.factor(dens$TREAT)
@@ -228,6 +226,7 @@ dens$TREAT <- as.factor(dens$TREAT)
   summary(mC_D.nb) # AIC 931
   
   #note the prediction vs. observed isn't great, but that's not the point here
+  dev.off()
   plot(predict(mC_D.nb, type="response",se.fit=T)$fit,CONIF_dens$COUNT)	#plots the exponentiated prediction back
   abline(0,1, col="red")								#one to one line
   
@@ -249,8 +248,10 @@ dens$TREAT <- as.factor(dens$TREAT)
     plot(mC_D.nb, main="NB")
     plot(mC_D.nb.slope, main="Slope")
 
-  summary(mC_D.nb) # AIC 931
-  summary(mC_D.nb.slope) # AIC 933
+  summary(mC_D.nb) # AIC 924
+  summary(mC_D.nb.slope) # AIC 926
+  
+  confint(mC_D.nb)
 
 ```
 
@@ -280,18 +281,22 @@ The next piece of code conducts the same process, but for deciduous density.
   
   mD_D.nb <- 	glm.nb(COUNT ~ TREAT + SITE + (TREAT*SITE), link = log, data = DECID_dens) 
   mD_D <- 		glm(COUNT ~ TREAT + SITE + (TREAT*SITE), family = poisson(link = "log"), data = DECID_dens) 
-  mD_D_qp <- 	glm(COUNT ~ TREAT + SITE + (TREAT*SITE), family = quasipoisson(link = "log"), data = DECID_dens) 
+  mD_D.qp <- 	glm(COUNT ~ TREAT + SITE + (TREAT*SITE), family = quasipoisson(link = "log"), data = DECID_dens) 
   
   # residuals
   par(mfrow=c(3,4))
   plot(mD_D, main="Poisson")
-  plot(mD_D_qp, main="Quasi-poisson")
+  plot(mD_D.qp, main="Quasi-poisson")
   plot(mD_D.nb, main="NB")
   
+  sqrt(mean(mD_D.nb$residuals^2))
+  sqrt(mean(mD_D$residuals^2))
+  sqrt(mean(mD_D.qp$residuals^2))
+
   # parameters
   summary(mD_D)
   summary(mD_D_qp)
-  summary(mD_D.nb) # AIC 1085
+  summary(mD_D.nb) # AIC 1087
   
   dev.off()
   plot(predict(mD_D.nb, type="response",se.fit=T)$fit,DECID_dens$COUNT)	#plots the exponentiated prediction back
@@ -303,22 +308,17 @@ The next piece of code conducts the same process, but for deciduous density.
   #bringing in other covariates
   #adding them into the glm above
   mD_D.nb <- 	glm.nb(COUNT ~ TREAT + SITE + (TREAT*SITE), link = log, data = DECID_dens)
-  mD_D.nb.slope <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE  + (TREAT*SITE),link = log, data = DECID_dens)
+  mD_D.nb.slope <- 	glm.nb(COUNT ~ TREAT + SITE + SLOPE + (TREAT*SITE),link = log, data = DECID_dens)
   
+  dev.off()
   par(mfrow=c(5,4))
   plot(mD_D.nb, main="NB")
   plot(mD_D.nb.slope, main="Slope")
   
-  sqrt(mean(mD_D.nb$residuals^2))
-  sqrt(mean(mD_D.nb.slope$residuals^2)) # slightly worse than base model
-  sqrt(mean(mD_D.nb.elev$residuals^2))
-  sqrt(mean(mD_D.nb.solar$residuals^2)) 
-  sqrt(mean(mD_D.nb.all$residuals^2)) # lowest
+  summary(mD_D.nb) # AIC 1087
+  summary(mD_D.nb.slope) # AIC 1089
   
-
-  summary(mD_D.nb) # AIC 1085
-  summary(mD_D.nb.slope) # AIC 1087
-
+  confint(mD_D.nb)
 ```
 
 
@@ -376,19 +376,10 @@ treat_dens %>%
   DECID_BA$BA <- (pi * (DECID_BA$DBH/2)^2)/10000	#convert to ba and cm2 to m2. Just pi*r2
   DECID_BA$BA_ha <- DECID_BA$BA * DECID_BA$QUAD		#multiply by expansion factor 
   
-test <- DECID_BA %>%
+DECID_BA <- DECID_BA %>%
     group_by(SITE, TREAT, PLOT, DIV) %>%
     summarise(BA = sum(BA_ha))
 
-  DECID_ba_new <- cbind(ba.plot, ba.trt[,2])						#combines
-  names(DECID_ba_new) <- c("PLOT","BA","TREAT")
-
-  ba.site <- cbind(DECID_BA$SITE,DECID_BA$PLOT)
-  temp <- as.data.frame(ba.site[!duplicated(ba.site[,2]),])
-  names(temp) <- c("SITE","PLOT")
-
-  DECID_BA <- merge(DECID_ba_new,temp,by="PLOT")	#double check all is well with the rows - right site/treatment/value
-  
   #histogram
   hist(DECID_BA$BA)
 
@@ -410,10 +401,69 @@ test <- DECID_BA %>%
 ```
 
 
-```{r basal area values for text}
-# getting values 
-ba <- read_csv(here("ba.csv"))
+```{r basal area analysis}
+DECID_BA$TREAT <- as.factor(DECID_BA$TREAT)
 
+  mD_BA.log <- lm(log(BA)  ~ TREAT + SITE + (TREAT*SITE), data = DECID_BA)						#models E[log(y)]
+  mD_BA.ga <- glm(BA  ~ TREAT + SITE + (TREAT*SITE), family = gaussian(link = "log"), data = DECID_BA)	#models log[E(y)]
+  mD_BA.gamma <- glm(BA  ~ TREAT + SITE + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
+  
+    #another option, look up lognormal distributions
+  BA_logn <- lognlm((BA)  ~ TREAT + SITE + (TREAT*SITE), data = DECID_BA)
+
+  par(mfrow=c(4,4))
+  plot(mD_BA.log, main= "Logged")
+  plot(mD_BA.ga, main="Guassian")
+  plot(mD_BA.gamma, main="Gamma")
+
+
+  #choosing a distribution is often best done with an understanding of the relationship between variance and mean
+  #Gaussian has constant variance; gamma and lognormal do not.
+  #heteroskedastic
+  par(mfrow=c(1,4))
+  plot((DECID_BA$BA),residuals(mD_BA.log),main="log"); abline(h=0)
+  plot((DECID_BA$BA),residuals(mD_BA.ga), main="Gaussian"); abline(h=0)	#pretty clear Gaussian is not great.
+  plot((DECID_BA$BA),residuals(mD_BA.gamma), main="Gamma"); abline(h=0)
+  plot((DECID_BA$BA),residuals(BA_logn), main="Lognormal"); abline(h=0)
+
+  # parameters
+  summary(mD_BA.log)
+  summary(mD_BA.ga) # AIC 133
+  summary(mD_BA.gamma) # AIC 58
+  summary(BA_logn)
+
+  #Compare root mean squared error
+  sqrt(mean(mD_BA.log$residuals^2)) # 0.80
+  sqrt(mean(mD_BA.ga$residuals^2)) # 0.82
+  sqrt(mean(mD_BA.gamma$residuals^2)) # 0.82
+  sqrt(mean(BA_logn$residuals^2)) # 1.03
+
+  par(mfrow=c(1,4)	)
+  plot(exp(predict(mD_BA.log)),DECID_BA$BA, main="logged LM")	#plots the exponentiated prediction back
+  abline(0,1)
+  plot((predict(mD_BA.ga, type="response")),DECID_BA$BA, main="Guassian")	#plots the exponentiated prediction back
+  abline(0,1)
+  plot(predict(mD_BA.gamma, type="response"),DECID_BA$BA, main="Gamma with log link")	#plots the exponentiated prediction back
+  abline(0,1)
+  plot(BA_logn$fitted.values,DECID_BA$BA, main = "lognormal")	#plots the exponentiated prediction back
+  abline(0,1)
+
+  # adding in covariates
+  mD_BA.gamma <- glm(BA  ~ TREAT + SITE + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
+  mD_BA.gamma.slope <- glm(BA  ~ TREAT + SITE + SLOPE + (TREAT*SITE), family = Gamma(link = "log"), data = DECID_BA)
+ 
+    par(mfrow=c(4,4))
+  plot(mD_BA.gamma, main= "Gamma")
+  plot(mD_BA.gamma.slope, main="Slope")
+  
+  summary(mD_BA.gamma) # AIC 58.2
+  summary(mD_BA.gamma.slope) # AIC 58.8
+  
+  confint(mD_BA.gamma)
+```
+
+
+```{r basal area values for text}
 treat_ba <- ba %>%
   group_by(SITE, TREAT, DIV) %>%
   summarise(AV = mean(BA_ha), SE = se(BA_ha))
