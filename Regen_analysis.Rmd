@@ -160,7 +160,7 @@ seed <- read.csv(here("data/seedling_count_raw.csv"))
     dens$COUNT_HA <- dens$TREE_COUNT_HA + dens$SEED_COUNT_HA
     
  #  write.csv(dens, here("data/density.csv"), row.names = F)
-    rm(test)
+    rm(test, seed, dbh)
 ```
 
 Finally, this last chunk brings in the values of slope, solar radiation and elevation of each site, to be used as fixed effects in the later model. 
@@ -189,6 +189,8 @@ Finally, this last chunk brings in the values of slope, solar radiation and elev
     dens$SLOPE <- attrib$SLOPE
     dens$ELEV <- attrib$ELEVATION
     dens$SOLAR <- attrib$SOLAR
+    
+    rm(attrib)
 ```
 
 
@@ -254,7 +256,7 @@ dens$TREAT <- as.factor(dens$TREAT)
   summary(mC_D.nb) # AIC 924
   summary(mC_D.nb.slope) # AIC 926
   
-  confint(mC_D.nb)
+  round(confint(mC_D.nb), digits = 2)
   
   sqrt(mean(mC_D.nb$residuals^2))
   sqrt(mean(mC_D.nb.slope$residuals^2))
@@ -324,7 +326,7 @@ The next piece of code conducts the same process, but for deciduous density.
   summary(mD_D.nb) # AIC 1087
   summary(mD_D.nb.slope) # AIC 1089
   
-  confint(mD_D.nb)
+  round(confint(mD_D.nb), digits = 2)
   
   sqrt(mean(mD_D.nb$residuals^2))
   sqrt(mean(mD_D.nb.slope$residuals^2))
@@ -407,6 +409,8 @@ DECID_BA <- DECID_BA %>%
     DECID_BA$SLOPE <- attrib$SLOPE
     DECID_BA$ELEV <- attrib$ELEVATION
     DECID_BA$SOLAR <- attrib$SOLAR
+    
+    rm(attrib)
 ```
 
 ## Basal area analysis
@@ -470,7 +474,7 @@ DECID_BA$TREAT <- as.factor(DECID_BA$TREAT)
   summary(mD_BA.gamma) # AIC 55
   summary(mD_BA.gamma.slope) # AIC 54.1
   
-  confint(mD_BA.gamma)
+  round(confint(mD_BA.gamma.slope), digits = 2)
   
   sqrt(mean(mD_BA.gamma$residuals^2)) # 0.80
   sqrt(mean(mD_BA.gamma.slope$residuals^2)) # 0.73
