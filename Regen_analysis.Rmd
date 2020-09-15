@@ -332,6 +332,7 @@ The next piece of code conducts the same process, but for deciduous density.
   sqrt(mean(mD_D.nb.slope$residuals^2))
 ```
 
+## Density numbers
 
 Finally, the code below pulls out specific values of density used in the text of the manuscript. 
 
@@ -480,8 +481,12 @@ DECID_BA$TREAT <- as.factor(DECID_BA$TREAT)
   sqrt(mean(mD_BA.gamma.slope$residuals^2)) # 0.73
 ```
 
+## Basal area numbers
 
 ```{r basal area values for text}
+# bringing in data
+  ba <- read.csv(here("ba.csv"))
+ 
 treat_ba <- ba %>%
   group_by(SITE, TREAT, DIV) %>%
   summarise(AV = mean(BA_ha), SE = se(BA_ha))
