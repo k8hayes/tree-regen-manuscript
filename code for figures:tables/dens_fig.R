@@ -16,6 +16,7 @@ plot_dens <- dens %>%
   summarise(COUNT_HA = mean(COUNT_HA)) 
 
 plot_dens %>%
+  filter(TREAT > 0) %>%
   ggplot(aes(x = as.factor(TREAT), y = COUNT_HA, fill = DIV)) + 
   geom_boxplot() + facet_wrap(~SITE) + ylim(0, 115000) + 
   labs(x = "Number of Fires", y = "Stems per Hectare", 
