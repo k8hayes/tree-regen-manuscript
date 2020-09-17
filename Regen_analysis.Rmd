@@ -252,7 +252,7 @@ dens$TREAT <- as.factor(dens$TREAT) # just to make sure
 
 CONIF_dens <- dens %>%
   group_by(SITE, TREAT, PLOT, DIV) %>%
-    summarise(COUNT_HA = sum(COUNT_HA), SLOPE = first(SLOPE)) %>%
+    summarise(COUNT = sum(COUNT_HA), SLOPE = first(SLOPE)) %>%
     ungroup() %>%
     complete(nesting(SITE, TREAT, PLOT), DIV, fill = list(COUNT_HA = 0)) %>%
   filter(DIV == "c")
@@ -312,25 +312,14 @@ CONIF_dens <- dens %>%
 The next piece of code conducts the same process, but for deciduous density. 
 
 ```{r deciduous density analysis}
-# Different way of subsetting, base R  
-  DECID_dens <- subset(dens, dens$DIV == "d")
 
-  # the plots are duplicated with one entry per species, so this reduces it to one value per plot
-  cnt <- aggregate(DECID_dens$COUNT_HA, list(DECID_dens$PLOT), FUN = sum)  	#adds up the count per ha for each row within a plot
-  trt <- aggregate(DECID_dens$TREAT, list(DECID_dens$PLOT), FUN = mean)		#gets the treatment number (mean works because they are the same
-  DECID_dens_new <- cbind(cnt, trt[,2])						#combines
-  
-  temp <- merge(x=DECID_dens_new, y=DECID_dens, by.x="Group.1", by.y="PLOT", all.x=F, all.y=F)	#adding in the site in a clumsy way but it was quick
-  temp2 <- temp[duplicated(temp[,1]),]										#merging and removing
-  temp3 <- temp2[duplicated(temp2[,1]),]        # have to loop through, since there's so many more species
-  temp4 <- temp3[duplicated(temp3[,1]),]        # absolutely sure there's a faster way to do this, just wanted to get it done
-  temp5 <- temp4[duplicated(temp4[,1]),]
-  DECID_dens_new <- temp5[duplicated(temp5[,1]),]				
-  rm(temp,temp2, temp3, temp4, temp5, cnt, trt) 				# cleaning up workspace
-  DECID_dens <- DECID_dens_new %>%	
-    rename(PLOT = Group.1, COUNT = x) %>% # renaming columns
-    dplyr::select(SITE, TREAT, PLOT, COUNT, SLOPE, ELEV, SOLAR) # selecting only the things we'll use							#back to original name so code below works
-  dev.off()
+DECID_dens <- dens %>%
+  group_by(SITE, TREAT, PLOT, DIV) %>%
+    summarise(COUNT = sum(COUNT_HA), SLOPE = first(SLOPE)) %>%
+    ungroup() %>%
+    complete(nesting(SITE, TREAT, PLOT), DIV, fill = list(COUNT_HA = 0)) %>%
+  filter(DIV == "d")
+
   hist(DECID_dens$COUNT)									#check
   
   mD_D.nb <- 	glm.nb(COUNT ~ TREAT + SITE + (TREAT*SITE), link = log, data = DECID_dens) 
@@ -418,7 +407,7 @@ The code below brings in "ba.csv", removes unburned sites, creates the DECID_BA 
 
 ```{r basal area bring in covariates}
 # bringing in data
-  ba <- read.csv(here("ba.csv"), stringsAsFactors = F)
+  ba <- read.csv(here("data/ba.csv"), stringsAsFactors = F)
  
   # removing unburned sites
   ba <- ba[ba$TREAT != 0,]
@@ -533,7 +522,7 @@ DECID_BA$TREAT <- as.factor(DECID_BA$TREAT) # just to make extra sure
 
 ```{r basal area values for text}
 # bringing in data
-  ba <- read.csv(here("ba.csv"))
+  ba <- read.csv(here("data/ba.csv"))
  
 treat_ba <- ba %>%
   group_by(SITE, TREAT, DIV) %>%
