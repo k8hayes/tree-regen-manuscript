@@ -79,9 +79,9 @@ dbh$TREAT <- as.factor(dbh$TREAT)
   # summing according to species
   dens <- dbh %>%
     group_by(SITE, TREAT, PLOT, SPP) %>%
-    summarise(COUNT_PLOT = n()) %>%
-    ungroup() %>%
-    complete(nesting(SITE, TREAT, PLOT), SPP, fill = list(COUNT_PLOT = 0)) # adds zero-counts back in for species
+    summarise(count = n()) %>%
+    
+    complete(SPP, fill = list(n = 0)) # adds zero-counts back in for species
   
   # adding divisions back in
     dens$DIV <- NA
@@ -193,8 +193,7 @@ seed <- read.csv(here("data/seedling_count_raw.csv"))
     arrange(match(SPP, c("ALCR", "ARCTO", "BENE", "POBA", "POTR", "SALIX", "PIGL", "PIME")),
             .by_group = T) %>%
      rename(TREE_COUNT_PLOT = COUNT_PLOT, TREE_COUNT_HA = COUNT_ha,
-            TREE_EXP_FACT = EXP_FACT) %>%
-     ungroup()# renames tree counts so we can combine with seedling
+            TREE_EXP_FACT = EXP_FACT) # renames tree counts so we can combine with seedling
    
   # combining files
   dens$SEED_COUNT_PLOT <- seed$TOTAL_COUNT
@@ -248,15 +247,28 @@ Finally, this last chunk brings in the values of slope, solar radiation and elev
 The piece of code that follows is the analysis of conifer density. The first half of the script uses base R to subset for just conifers, and then sums density of white and black spruce (the 2 conifers present at any site) before bringing the other variables back in. I checked the performance of negative binomial, poisson and quasipoisson distributions before deciding to go with the negative binomial, based on the fit of the residuals in the qq plot.I then added in slope and solar radiation as fixed effects, and re-checked the diagnostics. 
 
 ```{r conifer density analysis}
-dens$TREAT <- as.factor(dens$TREAT) # just to make sure
+dens$TREAT <- as.factor(dens$TREAT)
 
-CONIF_dens <- dens %>%
+
+test <- dens %>%
   group_by(SITE, TREAT, PLOT, DIV) %>%
-    summarise(COUNT_HA = sum(COUNT_HA), SLOPE = first(SLOPE)) %>%
-    ungroup() %>%
-    complete(nesting(SITE, TREAT, PLOT), DIV, fill = list(COUNT_HA = 0)) %>%
-  filter(DIV == "c")
+  mutate(COUNT_ha = sum(COUNT_HA)) %>%
 
+  dplyr::select(SITE, TREAT, PLOT, DIV, COUNT_ha, SLOPE, ELEV, SOLAR)
+
+# subsetting to conifers
+  CONIF_dens <- subset(dens, dens$DIV == "c")
+
+#the plots are duplicated with one entry per conifer species, so this reduces it to one value per plot
+  cnt <- aggregate(CONIF_dens$COUNT_HA, list(CONIF_dens$PLOT), FUN = sum)  	#adds up the count per ha for each row within a plot
+  trt <- aggregate(CONIF_dens$TREAT, list(CONIF_dens$PLOT), FUN = mean)	#gets the treatment number (mean works because they are the same
+  CONIF_dens_new <- cbind(cnt, trt[,2])						#combines
+  
+  temp <- merge(x=CONIF_dens_new, y=CONIF_dens, by.x="Group.1", by.y="PLOT", all.x=F, all.y=F)	#adding in the site in a clumsy way but it was quick
+  CONIF_dens_new <- temp[duplicated(temp[,1]),]					#merging and removing
+  CONIF_dens <- CONIF_dens_new %>%	
+    rename(PLOT = Group.1, COUNT = x) %>% # renaming columns
+    dplyr::select(SITE, TREAT, PLOT, COUNT, SLOPE, ELEV, SOLAR) # selecting only the things we'll use
   hist(CONIF_dens$COUNT)									#check
   
   mC_D.nb <- 	glm.nb(COUNT ~ TREAT + SITE + (TREAT*SITE), link = log, data = CONIF_dens) 
