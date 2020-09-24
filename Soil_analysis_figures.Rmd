@@ -1,11 +1,13 @@
 ---
-title: "Figure 7"
+title: "Soil Analysis"
 output: html_notebook
 editor_options: 
   chunk_output_type: inline
 ---
 
-# adventitious roots, organic layer and exposed mineral soil
+# Adventitious roots, organic layer and exposed mineral soil
+
+Working with 3 forms of soil data here: organic layer depth, percent cover of exposed mineral soil and depth to adventitious roots. 
 
 ```{r setting up}
   library(here)
@@ -14,36 +16,47 @@ editor_options:
   library(dplyr)
 ```
 
-# adventitous roots
+# Adventitous roots
+
+Plotting depth to adventitious roots, product is a supplemental figure. 
 
 ```{r adventitous roots plot}
 adven_root <- read.csv(here("data/adventaguous_roots.csv"))
+
 adven_root_plot <- ggplot(adven_root, 
-                          aes(x = factor(adven_root$TREAT),
-                              y = adven_root$DEPTH, 
-                              fill = adven_root$SITE)) + 
+                          aes(x = factor(TREAT),
+                              y = DEPTH, 
+                              fill = SITE)) + 
   geom_boxplot() + 
   labs(x = "Number of Fires", y = "Depth (cm)",
        title = "Soil Consumption") + 
-  scale_fill_manual(values = c("#d9d9d9", "#ffffff"), name = "Site Type", labels = c("Upland", "Lowland")) + 
+  scale_fill_manual(values = c("#d9d9d9", "#ffffff"), 
+                    name = "Site Type", 
+                    labels = c("Upland", "Lowland")) + 
   theme(plot.title = element_text(hjust = 0),
         legend.position = "none") + xlim("1", "2")
+
 adven_root_plot
 # save_plot("adven_root.png", adven_root_plot, base_aspect_ratio = 1.5)
 ```
 
-# organic layer depth
+# Organic layer depth
 
 ```{r organic layer plot}
 org_depth <- read.csv(here("data/org_depth.csv"))
- org_depth_plot <- ggplot(org_depth, aes(x = factor(TREAT), y = ORG_DEPTH, fill = SITE)) + 
+
+ org_depth_plot <- ggplot(org_depth, aes(x = factor(TREAT),
+                                         y = ORG_DEPTH, 
+                                         fill = SITE)) + 
     geom_boxplot()   + 
     scale_fill_manual(name = "Site Type",
                       values = c("#d9d9d9", "#ffffff"), 
                       labels = c("Upland", "Lowland")) + 
     labs(title = "Organic Layer Depth", 
          x = "Number of Fires", y = "Organic layer depth (cm)") + 
-    theme(plot.title = element_text(hjust = 0), legend.position =  "none") 
+    theme(plot.title = element_text(hjust = 0), 
+          legend.position =  "none") 
+ 
 org_depth_plot
   
 # save_plot("org_depth.png", org_depth_plot, base_aspect_ratio = 1.5)
@@ -53,6 +66,7 @@ org_depth_plot
 
 ```{r exposed mineral soil}
 exposed_min <- read.csv(here("data/exposed_min.csv"))
+
 expose_min_plot <- ggplot(exposed_min, 
                           aes(x = factor(TREATMENT),
                               y = MINERAL,
@@ -64,18 +78,22 @@ expose_min_plot <- ggplot(exposed_min,
     labs(title = "Exposed Mineral Soil", 
          x = "Number of Fires", y = "% of Mineral Soil Exposed") + 
     theme(plot.title = element_text(hjust = 0))
+
 expose_min_plot
 ```
 
-# combining all three
-```{r combined }
-plot_grid(adven_root_plot, org_depth_plot, expose_min_plot,
-          nrow = 1, ncol = 3,
-          rel_widths = c(0.9, 0.9,1.3), rel_heights = c(1,1, 1.5),
-          labels = c("A.", "B.", "C."))
+# Figure 7
 
-save_plot("substrate.png", substrate, nrow = 1, ncol = 2, base_aspect_ratio = 1.5)
+Produces figure 7, which includes both exposed mineral soil and organic layer depth. 
 
+```{r combined}
+substrate <- plot_grid(org_depth_plot, expose_min_plot,
+          nrow = 1, ncol = 2,
+          rel_widths = c(0.9,1.3), rel_heights = c(1, 1.5),
+          labels = c("A.", "B."))
+
+save_plot("substrate.png", substrate, nrow = 1, ncol = 2,
+          base_aspect_ratio = 1.5)
 ```
 
 # getting numbers

@@ -248,14 +248,14 @@ Finally, this last chunk brings in the values of slope, solar radiation and elev
 The piece of code that follows is the analysis of conifer density. The first half of the script uses base R to subset for just conifers, and then sums density of white and black spruce (the 2 conifers present at any site) before bringing the other variables back in. I checked the performance of negative binomial, poisson and quasipoisson distributions before deciding to go with the negative binomial, based on the fit of the residuals in the qq plot.I then added in slope and solar radiation as fixed effects, and re-checked the diagnostics. 
 
 ```{r conifer density analysis}
-dens$TREAT <- as.factor(dens$TREAT) # just to make sure
-
 CONIF_dens <- dens %>%
   group_by(SITE, TREAT, PLOT, DIV) %>%
     summarise(COUNT = sum(COUNT_HA), SLOPE = first(SLOPE)) %>%
     ungroup() %>%
     complete(nesting(SITE, TREAT, PLOT), DIV, fill = list(COUNT_HA = 0)) %>%
   filter(DIV == "c")
+
+CONIF_dens$TREAT <- as.factor(CONIF_dens$TREAT) # just to make sure
 
   hist(CONIF_dens$COUNT)									#check
   
@@ -304,8 +304,30 @@ CONIF_dens <- dens %>%
   
   sqrt(mean(mC_D.nb$residuals^2))
   sqrt(mean(mC_D.nb.slope$residuals^2))
+```
+
+#### Back-transforming
+
+```{r}
+#now predict new data, but the response, which will back transform
+preddata <- data.frame(TREAT = unique(CONIF_dens$TREAT))
+preds <- predict(mC_D.nb, newdata=preddata, type="response", se.fit=T)
+
+#note the evidence it's back transformed proper
+preds$fit
+
+#and the se is calculated back OK
+preds$se.fit; ss$se.Poiss
+
+# Confidence interval (95)
+fit <- preds$fit
+lwr <- fit - 1.96*preds$se.fit
+upr <- fit + 1.96*preds$se.fit
 
 ```
+
+
+
 
 ### Deciduous
 
@@ -365,6 +387,12 @@ DECID_dens <- dens %>%
   
   sqrt(mean(mD_D.nb$residuals^2))
   sqrt(mean(mD_D.nb.slope$residuals^2))
+```
+
+### back-transforming 
+
+```{r}
+
 ```
 
 ## Values for text

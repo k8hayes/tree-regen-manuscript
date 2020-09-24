@@ -47,7 +47,6 @@ preds <- predict(glm1, newdata=preddata, type="response", se.fit=T)
 #note the evidence it's back transformed proper
 preds$fit; ss$mean
 
-
 #and the se is calculated back OK
 preds$se.fit; ss$se.Poiss
 
