@@ -96,7 +96,7 @@ save_plot("substrate.png", substrate, nrow = 1, ncol = 2,
           base_aspect_ratio = 1.5)
 ```
 
-# getting numbers
+# Numbers used in text
 ## adven root
 ```{r getting mins and maxs uplands}
 upland <- adven_root[adven_root$SITE == "DALTON",]
