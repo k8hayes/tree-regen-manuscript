@@ -1,4 +1,8 @@
-# unburned graphs
+# Figure 3
+# unburned density and basal area
+# conifer and deciduous
+# both plots 
+
 library(tidyverse)
 library(ggplot2)
 library(cowplot)
