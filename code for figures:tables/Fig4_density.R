@@ -1,5 +1,7 @@
-# density figure
-# fig 
+# Figure 4
+# density of regeneration
+# faceted, both sites
+
 library(tidyverse)
 library(cowplot)
 library(here)
@@ -19,11 +21,12 @@ plot_dens %>%
   filter(TREAT > 0) %>%
   ggplot(aes(x = as.factor(TREAT), y = COUNT_HA, fill = DIV)) + 
   geom_boxplot() + facet_wrap(~SITE) + ylim(0, 115000) + 
-  labs(x = "Number of Fires", y = "Stems per Hectare", 
-       title = "Density of Regeneration in Burned Plots") + 
+  labs(x = "Number of Fires", y = "Density (stems/ha)", 
+       title = "Regeneration Density across Reburns") + 
   scale_fill_manual(values = c("#f0f0f0", "#bdbdbd"),
                     name = "Division",
-                    labels = c("Conifer", "Deciduous"))
+                    labels = c("Conifer", "Deciduous")) + 
+background_grid() + panel_border()
 # export manually with 650 x 350, no aspect ratio
 # name = dens_fig.png
 
