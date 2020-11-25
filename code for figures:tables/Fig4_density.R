@@ -31,6 +31,10 @@ background_grid() + panel_border()
 # name = dens_fig.png
 
 
+# for ecosphere:
+# export as "fig4_density.pdf # 6 x 8 inc 
+# since ecosphere req max 15.6 cm by 20 cm
+
 #####################################
 ## figures used in NSF proposal 
 
