@@ -6,7 +6,7 @@ library(here)
 theme_set(theme_cowplot())
 options(scipen = 9999)
 
-ba <- read.csv(here("ba.csv"), stringsAsFactors = F)
+ba <- read.csv(here("data/ba.csv"), stringsAsFactors = F)
 
 ba$SITE[ba$SITE == "DALTON"] <- "Upland"
 ba$SITE[ba$SITE == "STEESE"] <- "Lowland"
@@ -20,7 +20,7 @@ plot_ba %>%
   ggplot(aes(x = as.factor(TREAT), y = BA_ha, fill = DIV)) + 
   geom_boxplot() + facet_wrap(~SITE)   + 
   labs(x = "Number of Fires", y = "Basal Area (m2/ha)", 
-       title = "Av. Basal Area in Burned Plots") + 
+       title = "Basal Area in Burned Plots") + 
   scale_fill_manual(values = c("#f0f0f0", "#bdbdbd"),
                      name = "Division",
                      labels = c("Conifer", "Deciduous"))

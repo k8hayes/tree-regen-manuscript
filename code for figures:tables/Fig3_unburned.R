@@ -71,22 +71,23 @@ plot_dens <- dens %>%
     
    fig3 <- cowplot:: plot_grid(lrow, rrow, ncol = 2)
    
-   title <- ggdraw() +
-     draw_label(
-       "Unburned Stand Structure between an Upland and Lowland Site",
-       fontface = 'bold',
-       x = 0, size = 17,
-       hjust = 0) +
-     theme(
-       # add margin on the left of the drawing canvas,
-       # so title is aligned with left edge of first plot
-       plot.margin = margin(0, 0, 0, 20))
-   
-   fig3_title <- plot_grid(title, fig3,
-     ncol = 1,
-     rel_heights = c(0.1, 1))
-   
-   fig3_title
+   fig3
+   # title <- ggdraw() +
+   #   draw_label(
+   #     "Unburned Stand Structure between an Upland and Lowland Site",
+   #     fontface = 'bold',
+   #     x = 0, size = 17,
+   #     hjust = 0) +
+   #   theme(
+   #     # add margin on the left of the drawing canvas,
+   #     # so title is aligned with left edge of first plot
+   #     plot.margin = margin(0, 0, 0, 20))
+   # 
+   # fig3_title <- plot_grid(title, fig3,
+   #   ncol = 1,
+   #   rel_heights = c(0.1, 1))
+   # 
+   # fig3_title
    
    # for earlier drafts:
     # export as "unburned.png" # 650 x 450, no aspect ratio
