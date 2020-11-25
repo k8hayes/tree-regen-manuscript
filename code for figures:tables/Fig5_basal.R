@@ -23,7 +23,9 @@ ba_fig <- plot_ba %>%
        title = "Basal Area in Burned Plots") + 
   scale_fill_manual(values = c("#f0f0f0", "#bdbdbd"),
                      name = "Division",
-                     labels = c("Conifer", "Deciduous"))
+                     labels = c("Conifer", "Deciduous")) + panel_border()
+ba_fig
+
 save_plot("Fig5.pdf", ba_fig)
 # export manually with 650 x 350, no aspect ratio
 # name = ba_fig.png

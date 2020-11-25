@@ -17,7 +17,7 @@ plot_dens <- dens %>%
   group_by(SITE, TREAT, PLOT, DIV) %>%
   summarise(COUNT_HA = mean(COUNT_HA)) 
 
-plot_dens %>%
+fig4 <- plot_dens %>%
   filter(TREAT > 0) %>%
   ggplot(aes(x = as.factor(TREAT), y = COUNT_HA, fill = DIV)) + 
   geom_boxplot() + facet_wrap(~SITE) + ylim(0, 115000) + 
@@ -25,8 +25,9 @@ plot_dens %>%
        title = "Regeneration Density across Reburns") + 
   scale_fill_manual(values = c("#f0f0f0", "#bdbdbd"),
                     name = "Division",
-                    labels = c("Conifer", "Deciduous")) + 
-background_grid() + panel_border()
+                    labels = c("Conifer", "Deciduous")) + panel_border()
+save_plot("Fig4.pdf", fig4)
+
 # export manually with 650 x 350, no aspect ratio
 # name = dens_fig.png
 
