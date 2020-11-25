@@ -57,8 +57,8 @@ up_plot <- regen %>%
   filter(SPP_PROP > 0 ) %>%
   ggplot(aes(x = as.factor(TREAT), y = SPP_PROP, 
                      fill = SPP)) + geom_boxplot() + 
-  labs(x = "Number of Fires", y = "Mean proportion of species", title = "Upland Site") +
-  theme(legend.position = "none") + 
+  labs(x = "Number of Fires", y = "Proportion present per plot", title = "Upland Site") +
+  theme(legend.position = "none") + ylim(0,1) + 
   scale_fill_manual(values = c( "#fdae61", "#d7191c", "#92c5de", "#0571b0"),
                     name = "Species", labels = c( "Birch", "Black Spruce", "Aspen", "Willow")) 
 
@@ -67,11 +67,12 @@ low_plot <- regen %>%
   filter(SPP_PROP > 0 ) %>%
   ggplot(aes(x = as.factor(TREAT), y = SPP_PROP, 
              fill = SPP)) + geom_boxplot() + 
-  labs(x = "Number of Fires", y = " ", title = "Lowland Site") +
+  labs(x = "Number of Fires", y = "Proportion present per plot", title = "Lowland Site") +
   scale_fill_manual(values = c( "#fdae61", "#d7191c", "#92c5de", "#0571b0"),
                     name = "Species", labels = c( "Birch", "Black Spruce", "Aspen", "Willow")) 
 
 up_low <- plot_grid(up_plot, low_plot, nrow = 1, ncol = 2,
           rel_widths = c(0.9,1.3), rel_heights = c(1, 1.5),
           labels = c("A.", "B."))
-save_plot("fig6.png", up_low, nrow = 1, ncol = 2)
+up_low
+# save_plot("fig6.png", up_low, nrow = 1, ncol = 2)
