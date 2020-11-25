@@ -11,7 +11,7 @@ theme_set(theme_cowplot())
   org_depth <- read.csv(here("data/org_depth.csv"))
   
   org_depth_plot <- ggplot(org_depth, 
-                         aes(x = factor(TREATMENT), y = ORG_DEPTH, 
+                         aes(x = factor(TREAT), y = ORG_DEPTH, 
                              fill = SITE)) + 
     geom_boxplot()   + 
     scale_fill_manual(name = "Site Type",
@@ -44,8 +44,9 @@ theme_set(theme_cowplot())
                           nrow = 1, ncol = 2,
                           rel_widths = c(0.95,1.25),
                           labels = c("A.", "B."))
+  substrate
   
-  save_plot("substrate.png", substrate, nrow = 1, ncol = 2, base_aspect_ratio = 1.5)
+   save_plot("fig7.pdf", substrate, nrow = 1, ncol = 2, base_aspect_ratio = 1.5)
   
 # getting numbers
   
