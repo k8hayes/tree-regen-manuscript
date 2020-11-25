@@ -6,6 +6,39 @@ library(tidyverse)
 library(here)
 se <- function(x) sqrt(var(x)/length(x))
 
+# code for figure 6 
+regen <- read.csv(here("data/regen.csv"))        
+  regen <- regen[regen$SPP != "POBA",]
+  regen <- regen[regen$SPP != "PIGL",]
+  regen <- regen[regen$SPP != "ARCTO",]
+  regen <- regen[regen$SPP != "ALCR",]
+
+up_plot <- regen %>%
+  filter(SITE == "Upland")  %>%
+  filter(SPP_PROP > 0 ) %>%
+  ggplot(aes(x = as.factor(TREAT), y = SPP_PROP, 
+             fill = SPP)) + geom_boxplot() + 
+  labs(x = "Number of Fires", y = "Proportion present per plot", title = "Upland Site") +
+  theme(legend.position = "none") + ylim(0,1) + 
+  scale_fill_manual(values = c( "#fdae61", "#d7191c", "#92c5de", "#0571b0"),
+                    name = "Species", labels = c( "Birch", "Black Spruce", "Aspen", "Willow")) 
+
+low_plot <- regen %>%
+  filter(SITE == "Lowland") %>%
+  filter(SPP_PROP > 0 ) %>%
+  ggplot(aes(x = as.factor(TREAT), y = SPP_PROP, 
+             fill = SPP)) + geom_boxplot() + 
+  labs(x = "Number of Fires", y = "Proportion present per plot", title = "Lowland Site") +
+  scale_fill_manual(values = c( "#fdae61", "#d7191c", "#92c5de", "#0571b0"),
+                    name = "Species", labels = c( "Birch", "Black Spruce", "Aspen", "Willow")) 
+
+up_low <- plot_grid(up_plot, low_plot, nrow = 1, ncol = 2,
+                    rel_widths = c(0.9,1.3), rel_heights = c(1, 1.5),
+                    labels = c("A.", "B."))
+up_low
+ save_plot("Fig6.pdf", up_low, nrow = 1, ncol = 2)
+
+
 # data for table s4 - proportion of regeneraation
   regen <- read.csv(here("data/regen.csv"))
   
@@ -45,34 +78,3 @@ se <- function(x) sqrt(var(x)/length(x))
   # regenPlot
   # save_plot("regenPlot.png", regenPlot, base_aspect_ratio = 1.5 )
 
-# code for current figure 6 
-  regen <- read.csv(here("data/regen.csv"))        
-  regen <- regen[regen$SPP != "POBA",]
-  regen <- regen[regen$SPP != "PIGL",]
-  regen <- regen[regen$SPP != "ARCTO",]
-  regen <- regen[regen$SPP != "ALCR",]
-
-up_plot <- regen %>%
-  filter(SITE == "Upland")  %>%
-  filter(SPP_PROP > 0 ) %>%
-  ggplot(aes(x = as.factor(TREAT), y = SPP_PROP, 
-                     fill = SPP)) + geom_boxplot() + 
-  labs(x = "Number of Fires", y = "Proportion present per plot", title = "Upland Site") +
-  theme(legend.position = "none") + ylim(0,1) + 
-  scale_fill_manual(values = c( "#fdae61", "#d7191c", "#92c5de", "#0571b0"),
-                    name = "Species", labels = c( "Birch", "Black Spruce", "Aspen", "Willow")) 
-
-low_plot <- regen %>%
-  filter(SITE == "Lowland") %>%
-  filter(SPP_PROP > 0 ) %>%
-  ggplot(aes(x = as.factor(TREAT), y = SPP_PROP, 
-             fill = SPP)) + geom_boxplot() + 
-  labs(x = "Number of Fires", y = "Proportion present per plot", title = "Lowland Site") +
-  scale_fill_manual(values = c( "#fdae61", "#d7191c", "#92c5de", "#0571b0"),
-                    name = "Species", labels = c( "Birch", "Black Spruce", "Aspen", "Willow")) 
-
-up_low <- plot_grid(up_plot, low_plot, nrow = 1, ncol = 2,
-          rel_widths = c(0.9,1.3), rel_heights = c(1, 1.5),
-          labels = c("A.", "B."))
-up_low
-# save_plot("fig6.png", up_low, nrow = 1, ncol = 2)

@@ -15,7 +15,7 @@ plot_ba <- ba %>%
   group_by(SITE, TREAT, PLOT, DIV) %>%
   summarise(BA_ha = mean(BA_ha))
 
-plot_ba %>%
+ba_fig <- plot_ba %>%
   filter(TREAT != 0) %>%
   ggplot(aes(x = as.factor(TREAT), y = BA_ha, fill = DIV)) + 
   geom_boxplot() + facet_wrap(~SITE)   + 
@@ -24,6 +24,7 @@ plot_ba %>%
   scale_fill_manual(values = c("#f0f0f0", "#bdbdbd"),
                      name = "Division",
                      labels = c("Conifer", "Deciduous"))
+save_plot("Fig5.pdf", ba_fig)
 # export manually with 650 x 350, no aspect ratio
 # name = ba_fig.png
 
