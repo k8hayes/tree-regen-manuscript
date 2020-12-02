@@ -5,6 +5,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(ggplot2)
 library(cowplot)
 library(here)
 theme_set(theme_cowplot())
@@ -305,30 +306,6 @@ CONIF_dens$TREAT <- as.factor(CONIF_dens$TREAT) # just to make sure
   sqrt(mean(mC_D.nb$residuals^2))
   sqrt(mean(mC_D.nb.slope$residuals^2))
 ```
-
-#### Back-transforming
-
-```{r}
-#now predict new data, but the response, which will back transform
-preddata <- data.frame(TREAT = unique(CONIF_dens$TREAT))
-preds <- predict(mC_D.nb, newdata=preddata, type="response", se.fit=T)
-
-#note the evidence it's back transformed proper
-preds$fit
-
-#and the se is calculated back OK
-preds$se.fit; ss$se.Poiss
-
-# Confidence interval (95)
-fit <- preds$fit
-lwr <- fit - 1.96*preds$se.fit
-upr <- fit + 1.96*preds$se.fit
-
-```
-
-
-
-
 ### Deciduous
 
 The next piece of code conducts the same process, but for deciduous density. 
@@ -387,12 +364,6 @@ DECID_dens <- dens %>%
   
   sqrt(mean(mD_D.nb$residuals^2))
   sqrt(mean(mD_D.nb.slope$residuals^2))
-```
-
-### back-transforming 
-
-```{r}
-
 ```
 
 ## Values for text
