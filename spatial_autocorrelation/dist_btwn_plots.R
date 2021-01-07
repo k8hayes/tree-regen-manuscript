@@ -2,6 +2,7 @@
 library(here)
 library(tidyverse)
 library(fossil)
+session <- sessionInfo()
 
 coord <- read.csv(here("data/site_locations.csv"))
 

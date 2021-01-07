@@ -4,7 +4,8 @@ library(ape)
 library(spdep)
 library(here)
 library(tidyverse)
-options(scipen = 9999)
+session <- sessionInfo()
+options(scipen = 9999) # turns off scientific notation
 
 ba <- read.csv(here("ba.csv"))
 

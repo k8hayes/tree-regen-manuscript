@@ -14,6 +14,7 @@ Working with 3 forms of soil data here: organic layer depth, percent cover of ex
   library(ggplot2)
   library(cowplot) ; theme_set(theme_cowplot())
   library(dplyr)
+  session <- sessionInfo()
 ```
 
 # Adventitous roots

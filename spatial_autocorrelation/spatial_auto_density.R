@@ -5,6 +5,7 @@ library(spdep)
 library(here)
 library(tidyverse)
 options(scipen = 9999)
+session <- sessionInfo()
 
 dens <- read.csv(here("data/density.csv"))
 
