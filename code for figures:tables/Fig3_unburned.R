@@ -66,10 +66,10 @@ plot_dens <- dens %>%
     ba
     # save_plot("ba_boxplot.png", ba)
     
-    lrow <- cowplot:: plot_grid(conif_dens, conif_ba, align = "v", axis = 'l', ncol = 1)
-    rrow <- cowplot:: plot_grid(decid_dens, decid_ba, align = "v", axis = "l", ncol = 1)
+    lrow <- cowplot:: plot_grid(conif_dens, conif_ba, align = "v", axis = 'l', ncol = 1, labels = c(" ", "B."))
+    rrow <- cowplot:: plot_grid(decid_dens, decid_ba, align = "v", axis = "l", ncol = 1 )
     
-   fig3 <- cowplot:: plot_grid(lrow, rrow, ncol = 2)
+   fig3 <- cowplot:: plot_grid(lrow, rrow, ncol = 2, labels = c("A."))
    
    fig3
    # title <- ggdraw() +
@@ -93,6 +93,7 @@ plot_dens <- dens %>%
     # export as "unburned.png" # 650 x 450, no aspect ratio
   
     # for ecosphere:
-    # export as "unburned.pdf # 6 x 8 inc 
+     # save as pdf
+    # export as "fig3_unburned.pdf # 6 x 8 inc 
         # since ecosphere req max 15.6 cm by 20 cm
     
