@@ -64,17 +64,17 @@ up_low
       filter(MEAN_PROP >0 )
 
 # code used for line graph
-  # regenPlot <- ggplot(regen, aes(x = as.factor(TREAT), y = MEAN_PROP, 
-  #                                    color = SPP, group = SPP)) + facet_wrap(regen$SITE) + 
-  #   geom_line(size = 0.75) + geom_point(aes(shape = SPP))  + 
-  #   labs(x = "Number of Fires", y = "Mean proportion of species", title = "Proportion of Regeneration by Species") +
-  #   scale_shape_manual(values = c(16,17,18,19), 
-  #                      name = "Species", labels = c( "Birch", "Black Spruce", "Aspen", "Willow")) +
-  #   scale_color_manual(values = c( "#fdae61", "#d7191c", "#92c5de", "#0571b0"),
-  #                      name = "Species", labels = c( "Birch", "Black Spruce", "Aspen", "Willow"))  + 
-  #   geom_errorbar(aes(ymin = MEAN_PROP - SE, 
-  #                     ymax = MEAN_PROP + SE), 
-  #                 width = .65, position = position_dodge(0.15))
-  # regenPlot
+ regeggplot(MeanRegen, aes(x = as.factor(TREAT), y = MEAN_PROP,
+                                     color = SPP, group = SPP)) + facet_wrap(~SITE) +
+    geom_line(size = 0.75) + geom_point(aes(shape = SPP))  +
+    labs(x = "Number of Fires", y = "Mean proportion of species", title = "Proportion of Regeneration by Species") +
+    scale_shape_manual(values = c(16,17,18,19),
+                       name = "Species", labels = c( "Birch", "Black Spruce", "Aspen", "Willow")) +
+    scale_color_manual(values = c( "#08306b", "#d7191c", "#9ecae1", "#0571b0"),
+                       name = "Species", labels = c( "Birch", "Black Spruce", "Aspen", "Willow"))  +
+    geom_errorbar(aes(ymin = MEAN_PROP - SE,
+                      ymax = MEAN_PROP + SE),
+                  width = .65, position = position_dodge(0.15))
+  regenPlot
   # save_plot("regenPlot.png", regenPlot, base_aspect_ratio = 1.5 )
 
