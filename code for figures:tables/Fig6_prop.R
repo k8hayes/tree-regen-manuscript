@@ -64,7 +64,7 @@ up_low
       filter(MEAN_PROP >0 )
 
 # code used for line graph
- regeggplot(MeanRegen, aes(x = as.factor(TREAT), y = MEAN_PROP,
+ ggplot(MeanRegen, aes(x = as.factor(TREAT), y = MEAN_PROP,
                                      color = SPP, group = SPP)) + facet_wrap(~SITE) +
     geom_line(size = 0.75) + geom_point(aes(shape = SPP))  +
     labs(x = "Number of Fires", y = "Mean proportion of species", title = "Proportion of Regeneration by Species") +
