@@ -1,9 +1,8 @@
 # organic layer and exposed mineral soil
 # Figure 7
 
-library(ggplot2)
+library(tidyverse)
 library(cowplot)
-library(dplyr)
 library(here)
 theme_set(theme_cowplot())
 
@@ -52,6 +51,11 @@ theme_set(theme_cowplot())
   
   ## organic layer
   summary(org_depth$ORG_DEPTH[org_depth$TREATMENT == 0])
+  
+  org_depth %>%
+    group_by(SITE,TREAT, PLOT) %>%
+    summarise(AV = mean(ORG_DEPTH), SD = sd(ORG_DEPTH)) %>%
+    filter(SITE == "STEESE", TREAT !=0)
   
   # UPLANDS
   upland <- org_depth[org_depth$SITE == "DALTON",]
