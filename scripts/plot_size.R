@@ -11,7 +11,7 @@ test <- dalton %>%
   summarise(mean = mean(QUAD))
 
 dalton$QUAD[dalton$PLOT == "32_2"] <- 1
-dalton$QUAD[dalton$PLOT == "32_9"] <- 1
+dalton$QUAD[dalton$PLOT == "39_2"] <- 1
 dalton$QUAD[dalton$PLOT == "48_1"] <- 1
 dalton$QUAD[dalton$PLOT == "56_2"] <- 1
 dalton$QUAD[dalton$PLOT == "7_3"] <- 0.2
