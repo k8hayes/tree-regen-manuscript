@@ -50,7 +50,9 @@ theme_set(theme_cowplot())
 # getting numbers
   
   ## organic layer
-  summary(org_depth$ORG_DEPTH[org_depth$TREATMENT == 0])
+  av <- org_depth %>%
+    group_by(SITE,TREAT) %>%
+    summarise(AV = mean(ORG_DEPTH), SD = sd(ORG_DEPTH))
   
   org_depth %>%
     group_by(SITE,TREAT, PLOT) %>%
